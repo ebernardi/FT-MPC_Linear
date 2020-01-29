@@ -2,21 +2,17 @@
 clc; clear; yalmip('clear');
 close all;
 
+RUIO = struct;
+
 %% LTI model
-Ts = 0.05;                       % Sample time [min]
+Ts = 0.05;               % Sample time [min]
 Theta_1s = 498;     % Temperatura de salida de fluido 1 (K) (set-point) (460)
 Theta_2s = 690;     % Temperatura de salida de fluido 2 (K)
 
 run HE;
 
-% Continuous-time system
-sys = ss(A, B, C, D);
-
-% Euler discretization method
-Ad = (A*Ts) + eye(nx); Bd = B*Ts; Cd = C; Dd = D; deltad = delta*Ts;
-
 %% Parameters
-N = 5;                                     % Prediction horizon
+Np = 5;                                   % Prediction horizon
 Time = 25;                              % Simulation end time 
 Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time;                         % Simulation time
@@ -39,44 +35,62 @@ Qx = eye(nx);
 Rx = diag([1 0.1]);
 gamma = 1e2*diag([1e6 1 1]); 
 
-%% Max reachable set
-X = Polyhedron('lb', xmin-X_lin, 'ub', xmax-X_lin);     % State polyhedron
-U = Polyhedron('lb', umin-U_lin, 'ub', umax-U_lin);    % Input polyhedron
-Acl = [Ad, Bd; zeros(nu, nx) eye(nu)];
-Maxiter = 50;
-Xs = X;
-for i = 1:Maxiter
-    Xo = Xs;
-    Z = Xo*U;   % Extended Set
-    
-    % Next set
-    S = Z.invAffineMap(Acl);
-    S = S.intersect(Z);
-    Xs = S.projection(1:nx).minHRep();
-    Xs = Xs.intersect(Xo).minHRep();
-    
-    % Check Invariant
-	if Xs == Xo
-        break;
-	end
-end
+% %% Max reachable set
+% X = Polyhedron('lb', xmin-X_lin, 'ub', xmax-X_lin);     % State polyhedron
+% U = Polyhedron('lb', umin-U_lin, 'ub', umax-U_lin);    % Input polyhedron
+% Acl = [Ad, Bd; zeros(nu, nx) eye(nu)];
+% Maxiter = 50;
+% Xs = X;
+% for k = 1:Maxiter
+%     Xo = Xs;
+%     Z = Xo*U;   % Extended Set
+%     
+%     % Next set
+%     S = Z.invAffineMap(Acl);
+%     S = S.intersect(Z);
+%     Xs = S.projection(1:nx).minHRep();
+%     Xs = Xs.intersect(Xo).minHRep();
+%     
+%     % Check Invariant
+% 	if Xs == Xo
+%         break;
+% 	end
+% end
 
 %% Reduced-order unknown input observer
-run RUIO;
-nobs = 2;
+N = 2;
+run HE_RUIO;
 
 %% MPC controller
 run MPC;
 
-Aso = [Ad zeros(nx, nobs+nobs); L_ast_1 K_1 zeros(nu); L_ast_2 zeros(nu) K_2];
-Bso = [Bd zeros(nx, nu); zeros(nu) B1_bar_1; zeros(nu, nu) B2_bar_1];
-Cso = [T_1*[zeros(nobs, nx) eye(nobs) zeros(nobs); U1_1 -U1_1*Cd*N_1 zeros(1, nobs)]; ...
-            T_2*[zeros(nobs, nx+nobs) eye(nobs); U1_2 zeros(1, nobs) -U1_2*Cd*N_2]];
-Dso = zeros(nx+nx, nu+nu);
-sys_obs = ss(Aso, Bso, Cso, Dso, Ts);
+%% Simulation Setup
+U = zeros(nu, Nsim);                   % Control Input
+Ufail = zeros(nu, Nsim);               % Fault control Input
+X = zeros(nx, Nsim+1);               % States
+Y = zeros(ny, Nsim);                    % Measure outputs
+Yfail = zeros(ny, Nsim);                % Faulty measure outputs
+
+% RUIOs
+for j = 1:N
+    RUIO(j).Phi = zeros(N, Nsim+1);     % Observer states
+    RUIO(j).X = zeros(nx, Nsim);           % Estimated states
+    RUIO(j).error = zeros(1, Nsim);       % Error
+    RUIO(j).Fact = zeros(1, Nsim);        % Estimated control Input
+    RUIO(j).FQ = zeros(1, Nsim);           % Fault detect Q
+    RUIO(j).delay = 0;                            % Detection delay
+end
+
+% Initial states and inputs
+X(:, 1) = x0;
+U(:, 1) = U_lin;
+RUIO(1).X(:, 1) = x0;
+RUIO(2).X(:, 1) = x0;
+UIOO(1).X(:, 1) = x0;
+UIOO(2).X(:, 1) = x0;
               
 %% Simulation
-for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
+for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
     
     % Vector initialization for plots
     obj = NaN; state = x0; input = [NaN; NaN]; u_max = umax; u_min = umin;
@@ -84,18 +98,16 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
     ufail = [NaN; NaN]; ufail_max = umax; ufail_min = umin; y = x0;
 
     % Vector initialization for lsim
-    theta1 = [0; 0]; theta2 = [0; 0];
     x = x0; Y = x0;
     umin0 = umin; umax0 = umax;
     Umin = umin; Umax = umax;
-    F1est = 0; F2est = 0; Error1 = 0; Error2 = 0;
     uf = [0; 0];
-    for i = 1:Nsim
+    for k = 1:Nsim
 
         % Run MPC controller       
         [sol, diag] = mpc{x, xsp, uf};
         if diag
-            msg = ['Infeasible problem at t = ', num2str(i*Ts)];
+            msg = ['Infeasible problem at t = ', num2str(k*Ts)];
             disp(msg)
             return;
         end
@@ -111,11 +123,11 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         end
 
         % Add fails
-        if i*Ts >= 5 && i*Ts < 15
+        if k*Ts >= 5 && k*Ts < 15
             Ufail = umpc + f1;
             Umax = umax0 + f1;
             Umin = umin0 + f1;
-        elseif i*Ts >= 20
+        elseif k*Ts >= 20
             Ufail = umpc + f2;
             Umax = umax0 + f2;
             Umin = umin0 + f2;
@@ -134,37 +146,38 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
             end
         end
         
-        % Past values for Fault-estimation
-        xk = x-X_lin;
-        uk = umpc-U_lin;
-        theta1k = theta1;
-        theta2k = theta2;
+        U(:, k) = umpc;
         
         % Continuous-time simulation (reality)
         Dt  = linspace(0, Ts, 10)';
         u = (Ufail - U_lin)*ones(1, numel(Dt));% Zero-order hold input (with Input offset)
-        Y = lsim(sys, u, Dt, x-X_lin);  % Nominal system (with state offset)
-        Y = Y'+X_lin;
-        y = [y Y];                                    % System output with offset
-        
-        % Discrete-time Observer simulation
-        Dt  =0:Ts:Ts;                        % Vector of instants to be passed to lsim
-        uzoh = [(Ufail - U_lin); (umpc - U_lin)]*ones(1, numel(Dt));  % Zero-order hold input (with Input offset)
-        [yout, tout, xout] = lsim(sys_obs, uzoh, Dt, [x-X_lin; theta1; theta2]);  % Nominal system (with state offset)
-%         x = xout(end, 1:3)' + X_lin;                    % System output with offset in discrete time
-        x = Y(:, end);                                              % System output with offset in continuos time
-        theta1 = xout(end, 4:5)';                           % States of first observer
-        theta2 = xout(end, 6:7)';                           % States of second observer    
-        X1_hat = yout(end, 1:3)' + X_lin;               % Estimation of first observer
-        X2_hat = yout(end, 4:6)' + X_lin;               % Estimation of second observer    
-        Error1 = norm(X1_hat-x, 2);                      % Error 1 detection 
-        Error2 = norm(X2_hat-x, 2);                      % Error 2 detection 
+        X_sim = lsim(sys, u, Dt, X(:, k)-X_lin);  % Nominal system (with state offset)
+        X_sim = X_sim' + X_lin;
+        X(:, k+1) = X_sim(:, end);
+        Y(:, k) = C*X(:, k);
 
-        % Fault of first observer
-        F1est = U1_1*((x-X_lin) - Cd*N_1*theta1) + A1_bar_22*U1_1*(Cd*N_1*theta1k - xk) - (A1_bar_21*theta1k) - (B1_bar_2*uk);
-        % Fault of second observer
-        F2est = U1_2*((x-X_lin) - Cd*N_2*theta2) + A2_bar_22*U1_2*(Cd*N_2*theta2k - xk) - (A2_bar_21*theta2k) - (B2_bar_2*uk);
+        %% Sensor fault income
+        Yfail(:, k) = Y(:, k);
         
+        %% RUIO 1
+        RUIO(1).Phi(:, k+1) = RUIO(1).K*RUIO(1).Phi(:, k) + RUIO(1).L_ast*Yfail(:, k) + RUIO(1).B_bar_1*U(:, k) + RUIO(1).delta_bar_1;
+        RUIO(1).X(:, k) = RUIO(1).T*[RUIO(1).Phi(:, k); RUIO(1).U_1*Yfail(:, k)-RUIO(1).U_1*RUIO(1).C_tilde_1*RUIO(1).Phi(:, k)];
+
+        RUIO(1).Fact(k) = RUIO(1).U_1*(X(:, k+1) - RUIO(1).C_tilde_1*RUIO(1).Phi(:, k+1)) + RUIO(1).A_bar_22*RUIO(1).U_1*(RUIO(1).C_tilde_1*RUIO(1).Phi(:, k) - Yfail(:, k)) - RUIO(1).A_bar_21*RUIO(1).Phi(:, k) - RUIO(1).B_bar_2*U(:, k) - RUIO(1).delta_bar_2;
+
+        % Error norm 1
+        RUIO(1).error(k) = sqrt((RUIO(1).X(1, k)-Yfail(1, k))^2 + (RUIO(1).X(2, k)-Yfail(2, k))^2 + (RUIO(1).X(3, k)-Yfail(3, k))^2);
+
+        %% RUIO 2
+        RUIO(2).Phi(:, k+1) = RUIO(2).K*RUIO(2).Phi(:, k) + RUIO(2).L_ast*Yfail(:, k) + RUIO(2).B_bar_1*U(:, k) + RUIO(2).delta_bar_1;
+        RUIO(2).X(:, k) = RUIO(2).T*[RUIO(2).Phi(:, k); RUIO(2).U_1*Yfail(:, k)-RUIO(2).U_1*RUIO(2).C_tilde_1*RUIO(2).Phi(:, k)];
+
+        RUIO(2).Fact(k) = RUIO(2).U_1*(X(:, k+1) - RUIO(2).C_tilde_1*RUIO(2).Phi(:, k+1)) + RUIO(2).A_bar_22*RUIO(2).U_1*(RUIO(2).C_tilde_1*RUIO(2).Phi(:, k) - Yfail(:, k)) - RUIO(2).A_bar_21*RUIO(2).Phi(:, k) - RUIO(2).B_bar_2*U(:, k) - RUIO(2).delta_bar_2;
+
+        % Error norm 2
+        RUIO(2).error(k) = sqrt((RUIO(2).X(1, k)-Yfail(1, k))^2 + (RUIO(2).X(2, k)-Yfail(2, k))^2 + (RUIO(2).X(3, k)-Yfail(3, k))^2);
+
+        x = X_sim(:, end);                                              % System output with offset in discrete time
         % state limits
         for j = 1:nu
             if x(j) >= xmax(j)
@@ -174,23 +187,24 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
             end
         end
         
-        % Next Step Fault compensation
-        if  i*Ts>= 2 % Estimation is ok
-            if Error1 < 0.1  % Error 1 Threshold
-                F2est = 0;
-            end
-            if Error2 < 0.1  % Error 2 Threshold
-                F1est = 0;
-            end
-        else
-            F1est = 0; F2est = 0;
-        end
-        if FTC == 1
-            uf = [F1est; F2est];
-        else
-            uf = [0; 0];
-        end
+%         % Next Step Fault compensation
+%         if  i*Ts>= 2 % Estimation is ok
+%             if Error1 < 0.1  % Error 1 Threshold
+%                 F2est = 0;
+%             end
+%             if Error2 < 0.1  % Error 2 Threshold
+%                 F1est = 0;
+%             end
+%         else
+%             F1est = 0; F2est = 0;
+%         end
+%         if FTC == 1
+%             uf = [F1est; F2est];
+%         else
+%             uf = [0; 0];
+%         end
 
+        y = [y X_sim];                                    % System output with offset
         ufail = [ufail Ufail];                             % Failure input sequence    
         input = [input umpc];                        % Predicted input sequence    
         state = [state x];                               % System state
@@ -200,13 +214,13 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         ufail_max = [ufail_max Umax];
         ufail_min = [ufail_min Umin];
 
-        x1_hat = [x1_hat X1_hat];
-        error1 = [error1 Error1];
-        f1est = [f1est F1est];
-
-        x2_hat = [x2_hat X2_hat];
-        error2 = [error2 Error2];
-        f2est = [f2est F2est];
+%         x1_hat = [x1_hat X1_hat];
+%         error1 = [error1 Error1];
+%         f1est = [f1est F1est];
+% 
+%         x2_hat = [x2_hat X2_hat];
+%         error2 = [error2 Error2];
+%         f2est = [f2est F2est];
     end
 
     %% Set Plots

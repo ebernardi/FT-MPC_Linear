@@ -1,8 +1,8 @@
 yalmip('clear')
 
 %% Controller definition
-x = sdpvar(nx*ones(1, N+1), ones(1, N+1));
-u = sdpvar(nu*ones(1, N), ones(1, N));
+x = sdpvar(nx*ones(1, Np+1), ones(1, Np+1));
+u = sdpvar(nu*ones(1, Np), ones(1, Np));
 xs = sdpvar(nx, 1);
 uf = sdpvar(nu, 1);
 
@@ -13,7 +13,7 @@ ua = sdpvar(nu, 1);
 objective = 0; constraints = [];
 
 % Stage constraints and objective
-for k = 1:N
+for k = 1:Np
     % Objective
     objective = objective + (x{k}-xa)'*Qx*(x{k}-xa); 
     objective = objective + (u{k}+uf-ua)'*Rx*(u{k}+uf-ua);
@@ -28,7 +28,7 @@ end
 
 % Terminal constraints
 objective = objective + (xa-xs)'*gamma*(xa-xs);                              % Terminal cost
-constraints = [constraints, x{N+1} == xa];                                      % Equality terminal constraint
+constraints = [constraints, x{Np+1} == xa];                                      % Equality terminal constraint
 constraints = [constraints, xa == Ad*xa + Bd*ua + deltad];            % Artificial variables equilibirum condition
 % objective = objective + gamma*norm((xa-xs), 1);                            % Terminal cost
 % constraints = [constraints, x{N+1} == xs];                                      % Strong constraints
