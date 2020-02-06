@@ -74,11 +74,11 @@ rng default;                        % Random seed start
 v = sig*randn(1, Nsim);    % Measurement noise v~N(0, sig)
 
 %% Error detection threshold
-Tau = 10;                % Convergence period
+Tau = 2;                % Convergence period
 mag_1 = 1e-1;     % Value Q1
-mag_2 = 1.6e-1;  % Value Q2
-mag_3 = 1e-1;     % Value O1
-mag_4 = 1e-1;     % Value O2
+mag_2 = 5e-2;     % Value Q2
+mag_3 = 5e-4;     % Value O1
+mag_4 = 1e-3;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -133,7 +133,7 @@ UIOO(1).X(:, 1) = x0;
 UIOO(2).X(:, 1) = x0;
               
 %% Simulation
-for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
+for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
     
     % Vector initialization for plots
     Y_sim = C*x0; Umin = umin; Umax = umax;
@@ -351,208 +351,234 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         print -dsvg figs/outputHE.svg
     end
 
-	%% Manipulated variables
-    fig = figure('Name', 'Manipulated variables');
-    figure(2)
-    if FTC == 0
-        subplot(211)
-        stairs(t, U(1, :), 'b', 'LineWidth', 1.5)
-        hold on
-        xlabel('Time [min]'); ylabel('q_1 [l/min]'); grid on
-        subplot(212)
-        stairs(t, U(2, :), 'b', 'LineWidth', 1.5)
-        hold on
-        xlabel('Time [min]'); ylabel('q_2 [l/min]'); grid on
-	else
-        subplot(211)
-        stairs(t, U(1, :), 'k-.', 'LineWidth', 1.5)
-        plot(t, umin(1)*ones(length(t)), 'r--')
-        plot(t, umax(1)*ones(length(t)), 'r--')
-        hold off
-        legend('MPC', 'FTMPC', 'Location', 'NorthWest');
-        legend boxoff
-        subplot(212)
-        stairs(t, U(2, :), 'k-.', 'LineWidth', 1.5)
-        plot(t, umin(2)*ones(length(t)), 'r--')
-        plot(t, umax(2)*ones(length(t)), 'r--')
-        hold off
-        print -dsvg figs/inputHE.svg
-    end
+% 	%% Manipulated variables
+%     figure(2)
+%     if FTC == 0
+%         subplot(211)
+%         stairs(t, U(1, 1:end-1), 'b', 'LineWidth', 1.5)
+%         hold on
+%         xlabel('Time [min]'); ylabel('q_1 [l/min]'); grid on
+%         subplot(212)
+%         stairs(t, U(2, 1:end-1), 'b', 'LineWidth', 1.5)
+%         hold on
+%         xlabel('Time [min]'); ylabel('q_2 [l/min]'); grid on
+% 	else
+%         subplot(211)
+%         stairs(t, U(1, 1:end-1), 'k-.', 'LineWidth', 1.5)
+%         plot(t, umin(1)*ones(length(t)), 'r--')
+%         plot(t, umax(1)*ones(length(t)), 'r--')
+%         hold off
+%         legend('MPC', 'FTMPC', 'Location', 'NorthWest');
+%         legend boxoff
+%         subplot(212)
+%         stairs(t, U(2, 1:end-1), 'k-.', 'LineWidth', 1.5)
+%         plot(t, umin(2)*ones(length(t)), 'r--')
+%         plot(t, umax(2)*ones(length(t)), 'r--')
+%         hold off
+%         print -dsvg figs/inputHE.svg
+%     end
+% 
+%     % Failure inputs
+%     figure(3)
+%     if FTC == 0
+%         subplot(211)
+%         plot(t, Umin(1, :), 'r--')
+%         hold on
+%         plot(t, Umax(1, :), 'r--')
+%         stairs(t, Ufail(1, :), 'b', 'LineWidth', 1.5)
+%         xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
+%         subplot(212)
+%         plot(t, Umin(2, :), 'r--')
+%         hold on
+%         plot(t, Umax(2, :), 'r--')
+%         stairs(t, Ufail(2, :), 'b', 'LineWidth', 1.5)
+%         xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
+% 	else
+%         subplot(211)
+%         stairs(t, Ufail(1, :), 'k-.', 'LineWidth', 1.5)
+%         hold off
+%         subplot(212)
+%         stairs(t, Ufail(2, :), 'k-.', 'LineWidth', 1.5)
+%         hold off
+%         print -dsvg figs/inputfailHE.svg
+%     end
 
-    % Failure inputs
-    figure(3)
-    if FTC == 0
-        subplot(211)
-        plot(t, Umin(1, :), 'r--')
-        hold on
-        plot(t, Umax(1, :), 'r--')
-        stairs(t, Ufail(1, :), 'b', 'LineWidth', 1.5)
-        xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
-        subplot(212)
-        plot(t, Umin(2, :), 'r--')
-        hold on
-        plot(t, Umax(2, :), 'r--')
-        stairs(t, Ufail(2, :), 'b', 'LineWidth', 1.5)
-        xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
-	else
-        subplot(211)
-        stairs(t, Ufail(1, :), 'k-.', 'LineWidth', 1.5)
-        hold off
-        subplot(212)
-        stairs(t, Ufail(2, :), 'k-.', 'LineWidth', 1.5)
-        hold off
-        print -dsvg figs/inputfailHE.svg
-    end
-
-    % Error detection
+    % RUIO error detection
     figure(4)
     if FTC == 0
         subplot(211)
         plot(t, RUIO(1).error, 'b', 'LineWidth', 1.5)
         hold on; grid on
+        plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
         xlabel('Time [min]'); ylabel('|e_x|');
+        axis([0 inf 0 6.5])
         subplot(212)
         plot(t, RUIO(2).error, 'b', 'LineWidth', 1.5)
-        hold on; grid on        
+        hold on; grid on
+        plot(t, threshold(2, :),  'r--', 'LineWidth', 1.5)
+        axis([0 inf 0 0.6])
         xlabel('Time [min]'); ylabel('|e_x|');
 	else
         subplot(211)
         plot(t, RUIO(1).error, 'k-.', 'LineWidth', 1.5)
-        plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
-        axis([0 inf 0 6.5])
         hold off
         legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
         legend boxoff
         subplot(212)
         plot(t, RUIO(2).error, 'k-.', 'LineWidth', 1.5)
-        plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
-        axis([0 inf 0 0.6])
         hold off
-        print -dsvg figs/errorHE.svg
+        print -dsvg figs/RUIOerrorHE.svg
     end
-
-    % Fault estimation
+    
+	% UIOO error detection
     figure(5)
     if FTC == 0
         subplot(211)
-        stairs(t, RUIO(1).Fact, 'b', 'LineWidth', 1.5)
-        hold on
-        stairs(t, Ufail(1, :) - U(1, :), 'm--', 'LineWidth', 1.5)
-        xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
+        plot(t, UIOO(1).error, 'b', 'LineWidth', 1.5)
+        hold on; grid on
+        plot(t, threshold(3, :),  'r--', 'LineWidth', 1.5)
+        axis([0 inf 0 0.04])
+        xlabel('Time [min]'); ylabel('|e_x|');
         subplot(212)
-        stairs(t, RUIO(2).Fact, 'b', 'LineWidth', 1.5)
-        hold on
-        stairs(t, Ufail(2, :) - U(2, :), 'm--', 'LineWidth', 1.5)
-        xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
-    else
+        plot(t, UIOO(2).error, 'b', 'LineWidth', 1.5)
+        hold on; grid on
+        plot(t, threshold(4, :),  'r--', 'LineWidth', 1.5)
+        axis([0 inf 0 0.03])
+        xlabel('Time [min]'); ylabel('|e_x|');
+	else
         subplot(211)
-        stairs(t, RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
+        plot(t, UIOO(1).error, 'k-.', 'LineWidth', 1.5)
         hold off
+        legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
+        legend boxoff
         subplot(212)
-        stairs(t, RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
+        plot(t, UIOO(2).error, 'k-.', 'LineWidth', 1.5)
         hold off
-        print -dsvg figs/estimationHE.svg
+        print -dsvg figs/UIOOerrorHE.svg
     end
 
-    % Objective
-    figure(6)
-    if FTC == 0
-        plot(t, Obj, 'b', 'LineWidth', 1.5)
-        hold on
-        xlabel('Time [min]'); ylabel('Objective'); grid on
-    else
-        plot(t, Obj, 'k-.', 'LineWidth', 1.5)
-        hold off
-        axis([0 inf 0 400])
-        print -dsvg figs/objectiveHE.svg
-    end
-    
-    % State evolution
-    figure(7)
-    if FTC == 0
-        plot3(x0(1), x0(2), x0(3), 'g*', 'LineWidth', 1.5);
-        hold on
-        plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
-        plot3(Y(1, :), Y(2, :), Y(3, :), 'b', 'LineWidth', 1.5)
-        plot3(Y(1, end), Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
-        plot3(xsp(1), xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
-        plot(Xpoly+X_lin, 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-        plot(Xs+X_lin, 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-        xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); zlabel('\theta_3 [K]'); grid on;
-    else
-        plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)        
-        plot3(Y(1, :), Y(2, :), Y(3, :), 'k-.', 'LineWidth', 1.5)
-        plot3(Y(1, end), Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
-        hold off
-        print -dsvg figs/stateHE.svg
-    end
-    
-    % State evolution
-    Xx = Xpoly.projection(1:2).minHRep();
-    Xxs = Xs.projection(1:2).minHRep();
-
-    figure(8)
-    if FTC == 0
-        plot(x0(1), x0(2), 'g*', 'LineWidth', 1.5);
-        hold on
-        plot(Y_sim(1, :), Y_sim(2, :), 'y', 'LineWidth', 1.5)        
-        plot(Y(1, :), Y(2, :), 'b.', 'LineWidth', 1.5)
-        plot(Y(1, end), Y(2, end), 'mo', 'LineWidth', 1.5)
-        plot(xsp(1), xsp(2), 'rp', 'LineWidth', 1.5)
-        plot(Xxs+X_lin(1:2), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-        plot(Xx+X_lin(1:2), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-        xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); grid on;
-    else
-        plot(Y_sim(1, :), Y_sim(2, :), 'g', 'LineWidth', 1.5)        
-        plot(Y(1, :), Y(2, :), 'k.', 'LineWidth', 1.5)
-        plot(Y(1, end), Y(2, end), 'ro', 'LineWidth', 1.5)
-        hold off
-        print -dsvg figs/state1-2HE.svg
-    end
-    
-    % State evolution
-    Xx = Xpoly.projection(1:2:3).minHRep();
-    Xxs = Xs.projection(1:2:3).minHRep();
-
-    figure(9)
-    if FTC == 0
-        plot(x0(1), x0(3), 'gd', 'LineWidth', 1.5);
-        hold on
-        plot(Y_sim(1, :), Y_sim(3, :), 'b', 'LineWidth', 1.5)
-        plot(Y(1, end), Y(3, end), 'mo', 'LineWidth', 1.5)
-        xlabel('\theta_1 [K]'); ylabel('\theta_3 [K]'); grid on;
-    else
-        plot(Y_sim(1, :), Y_sim(3, :), 'k--', 'LineWidth', 1.5)
-        plot(Y(1, end), Y(3, end), 'y*', 'LineWidth', 1.5)
-        plot(xsp(1), xsp(3), 'ro', 'LineWidth', 1.5)
-        plot(Xxs+X_lin(1:2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'LineWidth', 1.5)
-        plot(Xx+X_lin(1:2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'LineWidth', 1.5)
-        hold off
-        leg = legend('$x(0)$', '$x_{MPC}$', '$x_{MPC}(end)$', '$x_{FTMPC}$', '$x_{FTMPC}(end)$', '$x_s$', '$\bf{X}_s$', '$\bf{X}$', 'Location', 'SouthEast');
-        set(leg, 'Interpreter', 'latex');
-        print -dsvg figs/state1-3HE.svg
-    end
-    
-    % State evolution
-    Xx = Xpoly.projection(2:3).minHRep();
-    Xxs = Xs.projection(2:3).minHRep();
-
-    figure(10)
-    if FTC == 0
-        plot(x0(2), x0(3), 'g*', 'LineWidth', 1.5);
-        hold on
-        plot(Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
-        plot(Y(2, :), Y(3, :), 'b.', 'LineWidth', 1.5)
-        plot(Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
-        plot(xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
-        plot(Xxs+X_lin(2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-        plot(Xx+X_lin(2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-        xlabel('\theta_2 [K]'); ylabel('\theta_3 [K]'); grid on;
-    else
-        plot(Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)
-        plot(Y(2, :), Y(3, :), 'k.', 'LineWidth', 1.5)
-        plot(Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
-        hold off
-        print -dsvg figs/state2-3HE.svg    
-    end
+%     % Fault estimation
+%     figure(6)
+%     if FTC == 0
+%         subplot(211)
+%         stairs(t, RUIO(1).Fact, 'b', 'LineWidth', 1.5)
+%         hold on
+%         stairs(t, Ufail(1, :) - U(1, 1:end-1), 'm--', 'LineWidth', 1.5)
+%         xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
+%         subplot(212)
+%         stairs(t, RUIO(2).Fact, 'b', 'LineWidth', 1.5)
+%         hold on
+%         stairs(t, Ufail(2, :) - U(2, 1:end-1), 'm--', 'LineWidth', 1.5)
+%         xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
+%     else
+%         subplot(211)
+%         stairs(t, RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
+%         hold off
+%         subplot(212)
+%         stairs(t, RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
+%         hold off
+%         print -dsvg figs/estimationHE.svg
+%     end
+% 
+%     % Objective
+%     figure(7)
+%     if FTC == 0
+%         plot(t, Obj, 'b', 'LineWidth', 1.5)
+%         hold on
+%         xlabel('Time [min]'); ylabel('Objective'); grid on
+%     else
+%         plot(t, Obj, 'k-.', 'LineWidth', 1.5)
+%         hold off
+%         axis([0 inf 0 400])
+%         print -dsvg figs/objectiveHE.svg
+%     end
+%     
+%     % State evolution
+%     figure(8)
+%     if FTC == 0
+%         plot3(x0(1), x0(2), x0(3), 'g*', 'LineWidth', 1.5);
+%         hold on
+%         plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
+%         plot3(Y(1, :), Y(2, :), Y(3, :), 'b', 'LineWidth', 1.5)
+%         plot3(Y(1, end), Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
+%         plot3(xsp(1), xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
+%         plot(Xpoly+X_lin, 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+%         plot(Xs+X_lin, 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+%         xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); zlabel('\theta_3 [K]'); grid on;
+%     else
+%         plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)        
+%         plot3(Y(1, :), Y(2, :), Y(3, :), 'k-.', 'LineWidth', 1.5)
+%         plot3(Y(1, end), Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
+%         hold off
+%         print -dsvg figs/stateHE.svg
+%     end
+%     
+%     % State evolution
+%     Xx = Xpoly.projection(1:2).minHRep();
+%     Xxs = Xs.projection(1:2).minHRep();
+% 
+%     figure(9)
+%     if FTC == 0
+%         plot(x0(1), x0(2), 'g*', 'LineWidth', 1.5);
+%         hold on
+%         plot(Y_sim(1, :), Y_sim(2, :), 'y', 'LineWidth', 1.5)        
+%         plot(Y(1, :), Y(2, :), 'b.', 'LineWidth', 1.5)
+%         plot(Y(1, end), Y(2, end), 'mo', 'LineWidth', 1.5)
+%         plot(xsp(1), xsp(2), 'rp', 'LineWidth', 1.5)
+%         plot(Xxs+X_lin(1:2), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+%         plot(Xx+X_lin(1:2), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+%         xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); grid on;
+%     else
+%         plot(Y_sim(1, :), Y_sim(2, :), 'g', 'LineWidth', 1.5)        
+%         plot(Y(1, :), Y(2, :), 'k.', 'LineWidth', 1.5)
+%         plot(Y(1, end), Y(2, end), 'ro', 'LineWidth', 1.5)
+%         hold off
+%         print -dsvg figs/state1-2HE.svg
+%     end
+%     
+%     % State evolution
+%     Xx = Xpoly.projection(1:2:3).minHRep();
+%     Xxs = Xs.projection(1:2:3).minHRep();
+% 
+%     figure(10)
+%     if FTC == 0
+%         plot(x0(1), x0(3), 'gd', 'LineWidth', 1.5);
+%         hold on
+%         plot(Y_sim(1, :), Y_sim(3, :), 'b', 'LineWidth', 1.5)
+%         plot(Y(1, end), Y(3, end), 'mo', 'LineWidth', 1.5)
+%         xlabel('\theta_1 [K]'); ylabel('\theta_3 [K]'); grid on;
+%     else
+%         plot(Y_sim(1, :), Y_sim(3, :), 'k--', 'LineWidth', 1.5)
+%         plot(Y(1, end), Y(3, end), 'y*', 'LineWidth', 1.5)
+%         plot(xsp(1), xsp(3), 'ro', 'LineWidth', 1.5)
+%         plot(Xxs+X_lin(1:2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'LineWidth', 1.5)
+%         plot(Xx+X_lin(1:2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'LineWidth', 1.5)
+%         hold off
+%         leg = legend('$x(0)$', '$x_{MPC}$', '$x_{MPC}(end)$', '$x_{FTMPC}$', '$x_{FTMPC}(end)$', '$x_s$', '$\bf{X}_s$', '$\bf{X}$', 'Location', 'SouthEast');
+%         set(leg, 'Interpreter', 'latex');
+%         print -dsvg figs/state1-3HE.svg
+%     end
+%     
+%     % State evolution
+%     Xx = Xpoly.projection(2:3).minHRep();
+%     Xxs = Xs.projection(2:3).minHRep();
+% 
+%     figure(11)
+%     if FTC == 0
+%         plot(x0(2), x0(3), 'g*', 'LineWidth', 1.5);
+%         hold on
+%         plot(Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
+%         plot(Y(2, :), Y(3, :), 'b.', 'LineWidth', 1.5)
+%         plot(Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
+%         plot(xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
+%         plot(Xxs+X_lin(2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+%         plot(Xx+X_lin(2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+%         xlabel('\theta_2 [K]'); ylabel('\theta_3 [K]'); grid on;
+%     else
+%         plot(Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)
+%         plot(Y(2, :), Y(3, :), 'k.', 'LineWidth', 1.5)
+%         plot(Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
+%         hold off
+%         print -dsvg figs/state2-3HE.svg    
+%     end
 end
