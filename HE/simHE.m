@@ -17,7 +17,7 @@ run HE;
 
 %% Parameters
 Np = 5;                                   % Prediction horizon
-Time = 25;                              % Simulation end time 
+Time = 50;                              % Simulation end time 
 Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
@@ -139,31 +139,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
     Y_sim = C*x0; Umin = umin; Umax = umax;
     
     for k = 1:Nsim
+        tk = k*Ts; % Simulation time
 
-        % Run MPC controller       
-        [sol, diag] = mpc{X(:,k), xsp, Uff(:, k)};
-        if diag
-            msg = ['Infeasible problem at t = ', num2str(k*Ts)];
-            disp(msg)
-            return;
-        end
-        U(:, k) = sol{1}; Obj(:, k) = sol{2};
-
-        % Input limits
-        for j = 1:nu
-            if U(j, k) >= umax(j)
-                U(j, k) = umax(j);
-            elseif U(j, k) <= umin(j)
-                U(j, k) = umin(j);
-            end
-        end
-
-        % Add actuator fails
+        %% Actuator fault income
         if k*Ts > 5 && k*Ts < 15
             Ufail(:, k) = U(:, k) + f1;
             Umax(:, k) = umax + f1;
             Umin(:, k) = umin + f1;
-        elseif k*Ts > 20
+        elseif k*Ts > 20 && k*Ts < 25
             Ufail(:, k) = U(:, k) + f2;
             Umax(:, k) = umax + f2;
             Umin(:, k) = umin + f2;
@@ -205,6 +188,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         %% Sensor fault income
         %TODO: Add output fails
         Yfail(:, k) = Y(:, k);
+        
+        if k*Ts > 28 && k*Ts < 38
+            Yfail(:, k) = Y(:, k) + [0; -1; 0];
+        end
+
+        if k*Ts >40 && k*Ts < 50
+            Yfail(:, k) = Y(:, k) + [1; 0; 0];
+        end
         
         %% RUIO 1
         RUIO(1).Phi(:, k+1) = RUIO(1).K*RUIO(1).Phi(:, k) + RUIO(1).L_ast*Yfail(:, k) + RUIO(1).B_bar_1*U(:, k) + RUIO(1).delta_bar_1;
@@ -288,10 +279,19 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         
         % If FT-MPC is enabled
         if FTC == 1
-            Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
+            Uff(:, k) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
         else
-            Uff(:, k+1) = [0; 0];
+            Uff(:, k) = [0; 0];
         end
+        
+        % Run MPC controller
+        [sol, diag] = mpc{Yfail(:, k), xsp, Uff(:, k)};
+        if diag
+            msg = ['Infeasible problem at t = ', num2str(k*Ts)];
+            disp(msg)
+            return;
+        end
+        U(:, k+1) = sol{1}; Obj(:, k) = sol{2};
         
     end
 
@@ -351,7 +351,8 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         print -dsvg figs/outputHE.svg
     end
 
-    % Inputs
+	%% Manipulated variables
+    fig = figure('Name', 'Manipulated variables');
     figure(2)
     if FTC == 0
         subplot(211)
