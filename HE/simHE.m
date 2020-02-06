@@ -1,8 +1,11 @@
-%% MPC on CSTR
+%% MPC on HE
 clc; clear; yalmip('clear');
 close all;
 
 RUIO = struct;
+
+% When generates flat figures
+set(0, 'DefaultFigureRenderer', 'painters');
 
 %% LTI model
 Ts = 0.05;               % Sample time [min]
@@ -392,78 +395,75 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         plot3(Y(1, :), Y(2, :), Y(3, :), 'k-.', 'LineWidth', 1.5)
         plot3(Y(1, end), Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
         hold off
-        print -dsvg stateHE.svg
+        print -dsvg figs/stateHE.svg
     end
     
-%     % State evolution
-%     Xx = X.projection(1:2).minHRep();
-%     Xxs = Xs.projection(1:2).minHRep();
-% 
-%     figure(8)
-%     if FTC == 0
-%         plot(x0(1), x0(2), 'g*', 'LineWidth', 1.5);
-%         hold on
-%         plot(y(1, :), y(2, :), 'y', 'LineWidth', 1.5)        
-%         plot(state(1, :), state(2, :), 'b.', 'LineWidth', 1.5)
-%         plot(state(1, end), state(2, end), 'mo', 'LineWidth', 1.5)
-%         plot(xsp(1), xsp(2), 'rp', 'LineWidth', 1.5)
-%         plot(Xxs+X_lin(1:2), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-%         plot(Xx+X_lin(1:2), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-%         xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); grid on;
-%     else
-%         plot(y(1, :), y(2, :), 'g', 'LineWidth', 1.5)        
-%         plot(state(1, :), state(2, :), 'k.', 'LineWidth', 1.5)
-%         plot(state(1, end), state(2, end), 'ro', 'LineWidth', 1.5)
-%         hold off
-%     end
-%     % print -dsvg stateCSTR.svg
-%     
-%     % State evolution
-%     Xx = X.projection(1:2:3).minHRep();
-%     Xxs = Xs.projection(1:2:3).minHRep();
-% 
-%     figure(9)
-%     if FTC == 0
-%         plot(x0(1), x0(3), 'gd', 'LineWidth', 1.5);
-%         hold on
-%         plot(y(1, :), y(3, :), 'b', 'LineWidth', 1.5)
-% %         plot(state(1, :), state(3, :), 'b.', 'LineWidth', 1.5)
-%         plot(state(1, end), state(3, end), 'mo', 'LineWidth', 1.5)
-%         xlabel('\theta_1 [K]'); ylabel('\theta_3 [K]'); grid on;
-%     else
-%         plot(y(1, :), y(3, :), 'k--', 'LineWidth', 1.5)
-% %         plot(state(1, :), state(3, :), 'k.', 'LineWidth', 1.5)
-%         plot(state(1, end), state(3, end), 'y*', 'LineWidth', 1.5)
-%         plot(xsp(1), xsp(3), 'ro', 'LineWidth', 1.5)
-%         plot(Xxs+X_lin(1:2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'LineWidth', 1.5)
-%         plot(Xx+X_lin(1:2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'LineWidth', 1.5)
-%         hold off
-%         leg = legend('$x(0)$', '$x_{MPC}$', '$x_{MPC}(end)$', '$x_{FTMPC}$', '$x_{FTMPC}(end)$', '$x_s$', '$\bf{X}_s$', '$\bf{X}$', 'Location', 'SouthEast');
-%         set(leg, 'Interpreter', 'latex');
-%         pause(2)
-%         print -dsvg stateHE.svg
-%     end
-%     
-%     % State evolution
-%     Xx = X.projection(2:3).minHRep();
-%     Xxs = Xs.projection(2:3).minHRep();
-% 
-%     figure(10)
-%     if FTC == 0
-%         plot(x0(2), x0(3), 'g*', 'LineWidth', 1.5);
-%         hold on
-%         plot(y(2, :), y(3, :), 'y', 'LineWidth', 1.5)
-%         plot(state(2, :), state(3, :), 'b.', 'LineWidth', 1.5)
-%         plot(state(2, end), state(3, end), 'mo', 'LineWidth', 1.5)
-%         plot(xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
-%         plot(Xxs+X_lin(2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-%         plot(Xx+X_lin(2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-%         xlabel('\theta_2 [K]'); ylabel('\theta_3 [K]'); grid on;
-%     else
-%         plot(y(2, :), y(3, :), 'g', 'LineWidth', 1.5)
-%         plot(state(2, :), state(3, :), 'k.', 'LineWidth', 1.5)
-%         plot(state(2, end), state(3, end), 'ro', 'LineWidth', 1.5)
-%         hold off
-%     end
-%     % print -dsvg stateCSTR.svg    
+    % State evolution
+    Xx = Xpoly.projection(1:2).minHRep();
+    Xxs = Xs.projection(1:2).minHRep();
+
+    figure(8)
+    if FTC == 0
+        plot(x0(1), x0(2), 'g*', 'LineWidth', 1.5);
+        hold on
+        plot(Y_sim(1, :), Y_sim(2, :), 'y', 'LineWidth', 1.5)        
+        plot(Y(1, :), Y(2, :), 'b.', 'LineWidth', 1.5)
+        plot(Y(1, end), Y(2, end), 'mo', 'LineWidth', 1.5)
+        plot(xsp(1), xsp(2), 'rp', 'LineWidth', 1.5)
+        plot(Xxs+X_lin(1:2), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+        plot(Xx+X_lin(1:2), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+        xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); grid on;
+    else
+        plot(Y_sim(1, :), Y_sim(2, :), 'g', 'LineWidth', 1.5)        
+        plot(Y(1, :), Y(2, :), 'k.', 'LineWidth', 1.5)
+        plot(Y(1, end), Y(2, end), 'ro', 'LineWidth', 1.5)
+        hold off
+        print -dsvg figs/state1-2HE.svg
+    end
+    
+    % State evolution
+    Xx = Xpoly.projection(1:2:3).minHRep();
+    Xxs = Xs.projection(1:2:3).minHRep();
+
+    figure(9)
+    if FTC == 0
+        plot(x0(1), x0(3), 'gd', 'LineWidth', 1.5);
+        hold on
+        plot(Y_sim(1, :), Y_sim(3, :), 'b', 'LineWidth', 1.5)
+        plot(Y(1, end), Y(3, end), 'mo', 'LineWidth', 1.5)
+        xlabel('\theta_1 [K]'); ylabel('\theta_3 [K]'); grid on;
+    else
+        plot(Y_sim(1, :), Y_sim(3, :), 'k--', 'LineWidth', 1.5)
+        plot(Y(1, end), Y(3, end), 'y*', 'LineWidth', 1.5)
+        plot(xsp(1), xsp(3), 'ro', 'LineWidth', 1.5)
+        plot(Xxs+X_lin(1:2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'LineWidth', 1.5)
+        plot(Xx+X_lin(1:2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'LineWidth', 1.5)
+        hold off
+        leg = legend('$x(0)$', '$x_{MPC}$', '$x_{MPC}(end)$', '$x_{FTMPC}$', '$x_{FTMPC}(end)$', '$x_s$', '$\bf{X}_s$', '$\bf{X}$', 'Location', 'SouthEast');
+        set(leg, 'Interpreter', 'latex');
+        print -dsvg figs/state1-3HE.svg
+    end
+    
+    % State evolution
+    Xx = Xpoly.projection(2:3).minHRep();
+    Xxs = Xs.projection(2:3).minHRep();
+
+    figure(10)
+    if FTC == 0
+        plot(x0(2), x0(3), 'g*', 'LineWidth', 1.5);
+        hold on
+        plot(Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
+        plot(Y(2, :), Y(3, :), 'b.', 'LineWidth', 1.5)
+        plot(Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
+        plot(xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
+        plot(Xxs+X_lin(2:3), 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+        plot(Xx+X_lin(2:3), 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+        xlabel('\theta_2 [K]'); ylabel('\theta_3 [K]'); grid on;
+    else
+        plot(Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)
+        plot(Y(2, :), Y(3, :), 'k.', 'LineWidth', 1.5)
+        plot(Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
+        hold off
+    end
+    print -dsvg figs/state2-3HE.svg    
 end
