@@ -34,27 +34,27 @@ Qx = eye(nx);
 Rx = diag([1 0.1]);
 gamma = 1e2*diag([1e6 1 1]); 
 
-%% Max reachable set
-Xpoly = Polyhedron('lb', xmin-X_lin, 'ub', xmax-X_lin);     % State polyhedron
-Upoly = Polyhedron('lb', umin-U_lin, 'ub', umax-U_lin);    % Input polyhedron
-Acl = [Ad, Bd; zeros(nu, nx) eye(nu)];
-Maxiter = 50;
-Xs = Xpoly;
-for k = 1:Maxiter
-    Xo = Xs;
-    Z = Xo*Upoly;   % Extended Set
-    
-    % Next set
-    S = Z.invAffineMap(Acl);
-    S = S.intersect(Z);
-    Xs = S.projection(1:nx).minHRep();
-    Xs = Xs.intersect(Xo).minHRep();
-    
-    % Check Invariant
-	if Xs == Xo
-        break;
-	end
-end
+% %% Max reachable set
+% X = Polyhedron('lb', xmin-X_lin, 'ub', xmax-X_lin);     % State polyhedron
+% U = Polyhedron('lb', umin-U_lin, 'ub', umax-U_lin);    % Input polyhedron
+% Acl = [Ad, Bd; zeros(nu, nx) eye(nu)];
+% Maxiter = 50;
+% Xs = X;
+% for k = 1:Maxiter
+%     Xo = Xs;
+%     Z = Xo*U;   % Extended Set
+%     
+%     % Next set
+%     S = Z.invAffineMap(Acl);
+%     S = S.intersect(Z);
+%     Xs = S.projection(1:nx).minHRep();
+%     Xs = Xs.intersect(Xo).minHRep();
+%     
+%     % Check Invariant
+% 	if Xs == Xo
+%         break;
+% 	end
+% end
 
 %% Reduced-order unknown input observer
 N = 2;
@@ -147,7 +147,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         u = (Ufail(:, k) - U_lin)*ones(1, numel(Dt)); % Zero-order hold input (with Input offset)
         X_sim = lsim(sys, u, Dt, X(:, k)-X_lin);   % Nominal continuous system
         X_sim = X_sim' + X_lin;                        % (with state offset)
-        Y_sim = [Y_sim C*X_sim];                    % System output with offset (Continuous time)
+        Y_sim = [Y_sim C*X_sim];                    % System output with offset
         X(:, k+1) = X_sim(:, end);                     % Discrete-time state
         Y(:, k) = C*X(:, k);                                  % Discrete-time output
 
@@ -284,7 +284,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         plot(t, umin(2)*ones(length(t)), 'r--')
         plot(t, umax(2)*ones(length(t)), 'r--')
         hold off
-        print -dsvg figs/inputHE.svg
+        print -dsvg inputHE.svg
     end
 
     % Failure inputs
@@ -309,7 +309,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         subplot(212)
         stairs(t, Ufail(2, :), 'k-.', 'LineWidth', 1.5)
         hold off
-        print -dsvg figs/inputfailHE.svg
+        print -dsvg inputfailHE.svg
     end
 
     % Estimation error
@@ -336,7 +336,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         plot(t, 0.15*ones(length(t)),  'r--', 'LineWidth', 1.5)
         axis([0 inf 0 0.5])
         hold off
-        print -dsvg figs/errorHE.svg
+        print -dsvg errorHE.svg
     end
 
     % Fault estimation
@@ -362,38 +362,37 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         print -dsvg figs/estimationHE.svg
     end
 
-    % Objective
-    figure(6)
-    if FTC == 0
-        plot(t, Obj, 'b', 'LineWidth', 1.5)
-        hold on
-        xlabel('Time [min]'); ylabel('Objective'); grid on
-    else
-        plot(t, Obj, 'k-.', 'LineWidth', 1.5)
-        hold off
-        axis([0 inf 0 400])
-        print -dsvg figs/objectiveHE.svg
-    end
+%     % Objective
+%     figure(6)
+%     if FTC == 0
+%         plot(t, obj, 'b', 'LineWidth', 1.5)
+%         hold on
+%         xlabel('Time [min]'); ylabel('Objective'); grid on
+%     else
+%         plot(t, obj, 'k-.', 'LineWidth', 1.5)
+%         hold off
+%     end
+%     % print -dsvg objectiveCSTR.svg
     
-    % State evolution
-    figure(7)
-    if FTC == 0
-        plot3(x0(1), x0(2), x0(3), 'g*', 'LineWidth', 1.5);
-        hold on
-        plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'y', 'LineWidth', 1.5)
-        plot3(Y(1, :), Y(2, :), Y(3, :), 'b', 'LineWidth', 1.5)
-        plot3(Y(1, end), Y(2, end), Y(3, end), 'mo', 'LineWidth', 1.5)
-        plot3(xsp(1), xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
-        plot(Xpoly+X_lin, 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
-        plot(Xs+X_lin, 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
-        xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); zlabel('\theta_3 [K]'); grid on;
-    else
-        plot3(Y_sim(1, :), Y_sim(2, :), Y_sim(3, :), 'g', 'LineWidth', 1.5)        
-        plot3(Y(1, :), Y(2, :), Y(3, :), 'k-.', 'LineWidth', 1.5)
-        plot3(Y(1, end), Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
-        hold off
-        print -dsvg stateHE.svg
-    end
+%     % State evolution
+%     figure(7)
+%     if FTC == 0
+%         plot3(x0(1), x0(2), x0(3), 'g*', 'LineWidth', 1.5);
+%         hold on
+%         plot3(y(1, :), y(2, :), y(3, :), 'y', 'LineWidth', 1.5)
+%         plot3(state(1, :), state(2, :), state(3, :), 'b', 'LineWidth', 1.5)
+%         plot3(state(1, end), state(2, end), state(3, end), 'mo', 'LineWidth', 1.5)
+%         plot3(xsp(1), xsp(2), xsp(3), 'rp', 'LineWidth', 1.5)
+%         plot(X+X_lin, 'Color', vecrojo, 'Alpha', 0.05, 'edgecolor', vecrojo, 'linestyle', '--', 'LineWidth', 1.5)
+%         plot(Xs+X_lin, 'Color', gris, 'Alpha', 0.2, 'edgecolor', gris, 'linestyle', '--', 'LineWidth', 1.5)
+%         xlabel('\theta_1 [K]'); ylabel('\theta_2 [K]'); zlabel('\theta_3 [K]'); grid on;
+%     else
+%         plot3(y(1, :), y(2, :), y(3, :), 'g', 'LineWidth', 1.5)        
+%         plot3(state(1, :), state(2, :), state(3, :), 'k-.', 'LineWidth', 1.5)
+%         plot3(state(1, end), state(2, end), state(3, end), 'ro', 'LineWidth', 1.5)
+%         hold off
+%     end
+%     % print -dsvg stateCSTR.svg
     
 %     % State evolution
 %     Xx = X.projection(1:2).minHRep();
