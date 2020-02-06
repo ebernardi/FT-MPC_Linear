@@ -189,12 +189,19 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         %TODO: Add exponential threshold
         if  k*Ts>= 2 % Estimation is ok
             if RUIO(1).error(k) < 0.1  % Error 1 threshold
+                RUIO(1).FQ(k) = true;
                 RUIO(2).Fact(k) = 0;
+            else
+                RUIO(1).FQ(k) = false;
             end
-            if RUIO(2).error(k) < 0.15  % Error 2 threshold
+            if RUIO(2).error(k) < 0.16  % Error 2 threshold
+                RUIO(2).FQ(k) = true;
                 RUIO(1).Fact(k) = 0;
+            else
+                RUIO(2).FQ(k) = false;
             end
         else
+            RUIO(1).FQ(k) = false; RUIO(2).FQ(k) = false;
             RUIO(1).Fact(k) = 0; RUIO(2).Fact(k) = 0;
         end
         
@@ -330,14 +337,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         subplot(211)
         plot(t, RUIO(1).error, 'k-.', 'LineWidth', 1.5)
         plot(t, 0.1*ones(length(t)),  'r--', 'LineWidth', 1.5)
-        axis([0 inf 0 6])
+        axis([0 inf 0 6.5])
         hold off
         legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
         legend boxoff
         subplot(212)
         plot(t, RUIO(2).error, 'k-.', 'LineWidth', 1.5)
-        plot(t, 0.15*ones(length(t)),  'r--', 'LineWidth', 1.5)
-        axis([0 inf 0 0.5])
+        plot(t, 0.16*ones(length(t)),  'r--', 'LineWidth', 1.5)
+        axis([0 inf 0 0.6])
         hold off
         print -dsvg figs/errorHE.svg
     end
