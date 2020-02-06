@@ -464,6 +464,6 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         plot(Y(2, :), Y(3, :), 'k.', 'LineWidth', 1.5)
         plot(Y(2, end), Y(3, end), 'ro', 'LineWidth', 1.5)
         hold off
+        print -dsvg figs/state2-3HE.svg    
     end
-    print -dsvg figs/state2-3HE.svg    
 end
