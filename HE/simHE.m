@@ -2,6 +2,7 @@
 clc; clear; yalmip('clear');
 close all;
 
+UIOO = struct;
 RUIO = struct;
 
 % When generates flat figures
@@ -63,6 +64,31 @@ end
 N = 2;
 run HE_RUIO;
 
+%% Unknown input output observer
+run HE_UIOO;
+
+%% Noise
+sig = 3e-3*([1 1 1])';         % Ouput noise sigma
+
+rng default;                        % Random seed start
+v = sig*randn(1, Nsim);    % Measurement noise v~N(0, sig)
+
+%% Error detection threshold
+Tau = 10;                % Convergence period
+mag_1 = 1e-1;     % Value Q1
+mag_2 = 1.6e-1;  % Value Q2
+mag_3 = 1e-1;     % Value O1
+mag_4 = 1e-1;     % Value O2
+
+threshold = zeros(4, Nsim);
+
+for k = 1:Nsim
+    threshold(1, k) = mag_1 + 1000*exp(-(k-1)/Tau);  % Q1
+    threshold(2, k) = mag_2 + 900*exp(-(k-1)/Tau);    % Q2
+    threshold(3, k) = mag_3 + 100*exp(-(k-1)/Tau);    % O1
+    threshold(4, k) = mag_4 + 1000*exp(-(k-1)/Tau);  % O2
+end
+
 %% MPC controller
 run MPC;
 
@@ -83,6 +109,18 @@ for j = 1:N
     RUIO(j).Fact = zeros(1, Nsim);        % Estimated control Input
     RUIO(j).FQ = zeros(1, Nsim);           % Fault detect Q
     RUIO(j).delay = 0;                            % Detection delay
+end
+
+% UIOOs
+for j = 1:N
+    UIOO(j).Z = zeros(nx, Nsim+1);      % Observer states
+    UIOO(j).Ymon = zeros(N, Nsim);     % Monitorated outputs
+    UIOO(j).X = zeros(nx, Nsim);           % Estimated states
+    UIOO(j).Y = zeros(nx, Nsim);           % Estimated outputs
+    UIOO(j).res = zeros(nx, Nsim);        % Residue
+    UIOO(j).error = zeros(1, Nsim);       % Error
+    UIOO(j).Fsen = zeros(1, Nsim);       % Estimated sensor fault
+    UIOO(j).FO = zeros(1, Nsim);          % Fault detect S
 end
 
 % Initial states and inputs
@@ -152,6 +190,16 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         X_sim = X_sim' + X_lin;                        % (with state offset)
         Y_sim = [Y_sim C*X_sim];                    % System output with offset (Continuous time)
         X(:, k+1) = X_sim(:, end);                     % Discrete-time state
+        
+        % Natural state limits (maybe should be erased)
+        for j = 1:nu
+            if X(j, k) >= xmax(j)
+                X(j, k) = xmax(j);
+            elseif X(j, k) <= xmin(j)
+                X(j, k) = xmin(j);
+            end
+        end
+        
         Y(:, k) = C*X(:, k);                                  % Discrete-time output
 
         %% Sensor fault income
@@ -175,26 +223,59 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 
         % Error norm 2
         RUIO(2).error(k) = sqrt((RUIO(2).X(1, k)-Yfail(1, k))^2 + (RUIO(2).X(2, k)-Yfail(2, k))^2 + (RUIO(2).X(3, k)-Yfail(3, k))^2);
+        
+        %% UIOO 1
+        UIOO(1).Ymon(:, k) = UIOO(1).T2*Yfail(:, k);
+        UIOO(1).Z(:, k+1) = zeros(nx, 1);      
 
-        % State limits
-        for j = 1:nu
-            if X(j, k) >= xmax(j)
-                X(j, k) = xmax(j);
-            elseif X(j, k) <= xmin(j)
-                X(j, k) = xmin(j);
-            end
+        UIOO(1).Z(:, k+1) = UIOO(1).N*UIOO(1).Z(:, k) + UIOO(1).L*UIOO(1).Ymon(:, k) + UIOO(1).G*U(:, k) + UIOO(1).Tg;
+
+        UIOO(1).X(:, k) = UIOO(1).Z(:, k) - UIOO(1).E*UIOO(1).Ymon(:, k);
+        UIOO(1).Y(:, k) = Cd*UIOO(1).X(:, k);
+
+        % Residue 1
+        UIOO(1).res(:, k) = Yfail(:, k) - UIOO(1).Y(:, k);
+
+        % Error norm 1
+        UIOO(1).error(k) = sqrt(UIOO(1).res(1, k)^2);
+
+        if UIOO(1).error(k) > threshold(3, k)
+            UIOO(1).FO(k) = true;
+        else
+            UIOO(1).FO(k) = false;
+        end        
+
+        %% UIOO 2
+        UIOO(2).Ymon(:, k) = UIOO(2).T2*Yfail(:, k);
+        UIOO(2).Z(:, k+1) = zeros(nx, 1);      
+
+        UIOO(2).Z(:, k+1) = UIOO(2).N*UIOO(2).Z(:, k) + UIOO(2).L*UIOO(2).Ymon(:, k) + UIOO(2).G*U(:, k) + UIOO(2).Tg;
+
+        UIOO(2).X(:, k) = UIOO(2).Z(:, k) - UIOO(2).E*UIOO(2).Ymon(:, k);
+        UIOO(2).Y(:, k) = Cd*UIOO(2).X(:, k);
+
+        % Residue 2
+        UIOO(2).res(:, k) = Yfail(:, k) - UIOO(2).Y(:, k);
+
+        % Error norm 2
+        UIOO(2).error(k) = sqrt(UIOO(2).res(2, k)^2);
+
+        if UIOO(2).error(k) > threshold(4, k)
+            UIOO(2).FO(k) = true;
+        else
+            UIOO(2).FO(k) = false;
         end
         
-        % Next step fault compensation
+        %% Next step fault compensation (feedforward)
         %TODO: Add exponential threshold
         if  k*Ts>= 2 % Estimation is ok
-            if RUIO(1).error(k) < 0.1  % Error 1 threshold
+            if RUIO(1).error(k) < threshold(1, k)  % Error 1 threshold
                 RUIO(1).FQ(k) = true;
                 RUIO(2).Fact(k) = 0;
             else
                 RUIO(1).FQ(k) = false;
             end
-            if RUIO(2).error(k) < 0.16  % Error 2 threshold
+            if RUIO(2).error(k) < threshold(2, k)  % Error 2 threshold
                 RUIO(2).FQ(k) = true;
                 RUIO(1).Fact(k) = 0;
             else
@@ -322,7 +403,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         print -dsvg figs/inputfailHE.svg
     end
 
-    % Estimation error
+    % Error detection
     figure(4)
     if FTC == 0
         subplot(211)
@@ -336,14 +417,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 	else
         subplot(211)
         plot(t, RUIO(1).error, 'k-.', 'LineWidth', 1.5)
-        plot(t, 0.1*ones(length(t)),  'r--', 'LineWidth', 1.5)
+        plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
         axis([0 inf 0 6.5])
         hold off
         legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
         legend boxoff
         subplot(212)
         plot(t, RUIO(2).error, 'k-.', 'LineWidth', 1.5)
-        plot(t, 0.16*ones(length(t)),  'r--', 'LineWidth', 1.5)
+        plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
         axis([0 inf 0 0.6])
         hold off
         print -dsvg figs/errorHE.svg
