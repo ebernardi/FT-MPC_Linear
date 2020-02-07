@@ -15,6 +15,15 @@ for j = 1:N
         RUIO(j).Q = [0 1; 0 0; 1 0];
         RUIO(j).alpha = -0.2;
     end
+%     if j == 1
+%         RUIO(j).N = [0 0; 1 0; 0 1];
+%         RUIO(j).Q = [0 0; 0 1; 1 0];
+%         RUIO(j).alpha = -0.1;
+%     else
+%         RUIO(j).N = [0 0.1; 0 0; 1 0];
+%         RUIO(j).Q = [1 0; 0 0; 0 1];
+%         RUIO(j).alpha = -0.1;
+%     end
     
     % Transformation matrix T for each model
     RUIO(j).D = Bd(:, j);

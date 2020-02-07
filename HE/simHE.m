@@ -76,9 +76,9 @@ v = sig*randn(1, Nsim);    % Measurement noise v~N(0, sig)
 %% Error detection threshold
 Tau = 2;                % Convergence period
 mag_1 = 1e-1;     % Value Q1
-mag_2 = 5e-2;     % Value Q2
+mag_2 = 2e-1;     % Value Q2
 mag_3 = 5e-4;     % Value O1
-mag_4 = 1e-3;     % Value O2
+mag_4 = 2e-3;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -133,13 +133,22 @@ UIOO(1).X(:, 1) = x0;
 UIOO(2).X(:, 1) = x0;
               
 %% Simulation
-for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
+for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
     
     % Vector initialization for plots
     Y_sim = C*x0; Umin = umin; Umax = umax;
     
     for k = 1:Nsim
         tk = k*Ts; % Simulation time
+        
+        % Run MPC controller
+        [sol, diag] = mpc{X(:, k), xsp, Uff(:, k)};
+        if diag
+            msg = ['Infeasible problem at t = ', num2str(k*Ts)];
+            disp(msg)
+            return;
+        end
+        U(:, k) = sol{1}; Obj(:, k) = sol{2};
 
         %% Actuator fault income
         if k*Ts > 5 && k*Ts < 15
@@ -189,13 +198,13 @@ for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
         %TODO: Add output fails
         Yfail(:, k) = Y(:, k);
         
-        if k*Ts > 28 && k*Ts < 38
-            Yfail(:, k) = Y(:, k) + [0; -1; 0];
-        end
-
-        if k*Ts >40 && k*Ts < 50
-            Yfail(:, k) = Y(:, k) + [1; 0; 0];
-        end
+%         if k*Ts > 28 && k*Ts < 38
+%             Yfail(:, k) = Y(:, k) + [0; -1; 0];
+%         end
+% 
+%         if k*Ts >40 && k*Ts < 50
+%             Yfail(:, k) = Y(:, k) + [1; 0; 0];
+%         end
         
         %% RUIO 1
         RUIO(1).Phi(:, k+1) = RUIO(1).K*RUIO(1).Phi(:, k) + RUIO(1).L_ast*Yfail(:, k) + RUIO(1).B_bar_1*U(:, k) + RUIO(1).delta_bar_1;
@@ -205,6 +214,12 @@ for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
 
         % Error norm 1
         RUIO(1).error(k) = sqrt((RUIO(1).X(1, k)-Yfail(1, k))^2 + (RUIO(1).X(2, k)-Yfail(2, k))^2 + (RUIO(1).X(3, k)-Yfail(3, k))^2);
+        
+        if RUIO(1).error(k) > threshold(1, k)
+            RUIO(1).FQ(k) = true;
+        else
+            RUIO(1).FQ(k) = false;
+        end        
 
         %% RUIO 2
         RUIO(2).Phi(:, k+1) = RUIO(2).K*RUIO(2).Phi(:, k) + RUIO(2).L_ast*Yfail(:, k) + RUIO(2).B_bar_1*U(:, k) + RUIO(2).delta_bar_1;
@@ -214,6 +229,12 @@ for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
 
         % Error norm 2
         RUIO(2).error(k) = sqrt((RUIO(2).X(1, k)-Yfail(1, k))^2 + (RUIO(2).X(2, k)-Yfail(2, k))^2 + (RUIO(2).X(3, k)-Yfail(3, k))^2);
+        
+        if RUIO(2).error(k) > threshold(2, k)
+            RUIO(2).FQ(k) = true;
+        else
+            RUIO(2).FQ(k) = false;
+        end
         
         %% UIOO 1
         UIOO(1).Ymon(:, k) = UIOO(1).T2*Yfail(:, k);
@@ -257,41 +278,68 @@ for FTC = 0:0 % 0 - FTC is off; 1 - FTC is on
             UIOO(2).FO(k) = false;
         end
         
-        %% Next step fault compensation (feedforward)
-        %TODO: Add exponential threshold
-        if  k*Ts>= 2 % Estimation is ok
-            if RUIO(1).error(k) < threshold(1, k)  % Error 1 threshold
-                RUIO(1).FQ(k) = true;
+        %% Actuator fault estimation
+        if RUIO(1).FQ(k) && ~RUIO(2).FQ(k)% && ~UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 1
+            if RUIO(2).delay
+                RUIO(2).Fact(k) = RUIO(2).Fact(k);
+            else
+                RUIO(2).delay = 1;
                 RUIO(2).Fact(k) = 0;
-            else
-                RUIO(1).FQ(k) = false;
             end
-            if RUIO(2).error(k) < threshold(2, k)  % Error 2 threshold
-                RUIO(2).FQ(k) = true;
-                RUIO(1).Fact(k) = 0;
+        elseif ~RUIO(1).FQ(k) && RUIO(2).FQ(k)% && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
+            if RUIO(1).delay
+                RUIO(1).Fact(k) = RUIO(1).Fact(k);
             else
-                RUIO(2).FQ(k) = false;
+                RUIO(1).delay = 1;
+                RUIO(1).Fact(k) = 0;
             end
         else
-            RUIO(1).FQ(k) = false; RUIO(2).FQ(k) = false;
-            RUIO(1).Fact(k) = 0; RUIO(2).Fact(k) = 0;
+            RUIO(1).delay = 0;
+            RUIO(2).delay = 0;
+            RUIO(1).Fact(k) = 0;
+            RUIO(2).Fact(k) = 0;
         end
+
+%         %% Next step fault compensation (feedforward)
+%         %TODO: Add exponential threshold
+%         if  k*Ts>= 2 % Estimation is ok
+%             if RUIO(1).error(k) < threshold(1, k)  % Error 1 threshold
+%                 RUIO(1).FQ(k) = true;
+%                 RUIO(2).Fact(k) = 0;
+%             else
+%                 RUIO(1).FQ(k) = false;
+%             end
+%             if RUIO(2).error(k) < threshold(2, k)  % Error 2 threshold
+%                 RUIO(2).FQ(k) = true;
+%                 RUIO(1).Fact(k) = 0;
+%             else
+%                 RUIO(2).FQ(k) = false;
+%             end
+%         else
+%             RUIO(1).Fact(k) = 0; RUIO(2).Fact(k) = 0;
+%         end
+% 
+%         %% Sensor fault estimation
+%         % Sensor fault 1
+%         if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k)
+%             UIOO(1).Fsen(k) = UIOO(2).res(1, k);
+%         else
+%             UIOO(1).Fsen(k) = zeros(size(UIOO(2).res(1, k)));
+%         end
+% 
+%         % Sensor fault 2
+%         if RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k)
+%             UIOO(2).Fsen(k) = UIOO(1).res(2, k);
+%         else
+%             UIOO(2).Fsen(k) = zeros(size(UIOO(1).res(2, k)));
+%         end
         
         % If FT-MPC is enabled
         if FTC == 1
-            Uff(:, k) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
+            Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
         else
-            Uff(:, k) = [0; 0];
+            Uff(:, k+1) = [0; 0];
         end
-        
-        % Run MPC controller
-        [sol, diag] = mpc{Yfail(:, k), xsp, Uff(:, k)};
-        if diag
-            msg = ['Infeasible problem at t = ', num2str(k*Ts)];
-            disp(msg)
-            return;
-        end
-        U(:, k+1) = sol{1}; Obj(:, k) = sol{2};
         
     end
 
