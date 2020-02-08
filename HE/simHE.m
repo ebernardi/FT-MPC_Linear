@@ -198,13 +198,13 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         %TODO: Add output fails
         Yfail(:, k) = Y(:, k);
         
-%         if k*Ts > 28 && k*Ts < 38
-%             Yfail(:, k) = Y(:, k) + [0; -1; 0];
-%         end
-% 
-%         if k*Ts >40 && k*Ts < 50
-%             Yfail(:, k) = Y(:, k) + [1; 0; 0];
-%         end
+        if k*Ts > 28 && k*Ts < 38
+            Yfail(:, k) = Y(:, k) + [0; -3.5; 0];
+        end
+
+        if k*Ts >40 && k*Ts < 50
+            Yfail(:, k) = Y(:, k) + [2.5; 0; 0];
+        end
         
         %% RUIO 1
         RUIO(1).Phi(:, k+1) = RUIO(1).K*RUIO(1).Phi(:, k) + RUIO(1).L_ast*Yfail(:, k) + RUIO(1).B_bar_1*U(:, k) + RUIO(1).delta_bar_1;
@@ -279,14 +279,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         end
         
         %% Actuator fault estimation
-        if RUIO(1).FQ(k) && ~RUIO(2).FQ(k)% && ~UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 1
+        if RUIO(1).FQ(k) && ~RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 1
             if RUIO(2).delay
                 RUIO(2).Fact(k) = RUIO(2).Fact(k);
             else
                 RUIO(2).delay = 1;
                 RUIO(2).Fact(k) = 0;
             end
-        elseif ~RUIO(1).FQ(k) && RUIO(2).FQ(k)% && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
+        elseif ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
             if RUIO(1).delay
                 RUIO(1).Fact(k) = RUIO(1).Fact(k);
             else
@@ -300,39 +300,20 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
             RUIO(2).Fact(k) = 0;
         end
 
-%         %% Next step fault compensation (feedforward)
-%         %TODO: Add exponential threshold
-%         if  k*Ts>= 2 % Estimation is ok
-%             if RUIO(1).error(k) < threshold(1, k)  % Error 1 threshold
-%                 RUIO(1).FQ(k) = true;
-%                 RUIO(2).Fact(k) = 0;
-%             else
-%                 RUIO(1).FQ(k) = false;
-%             end
-%             if RUIO(2).error(k) < threshold(2, k)  % Error 2 threshold
-%                 RUIO(2).FQ(k) = true;
-%                 RUIO(1).Fact(k) = 0;
-%             else
-%                 RUIO(2).FQ(k) = false;
-%             end
-%         else
-%             RUIO(1).Fact(k) = 0; RUIO(2).Fact(k) = 0;
-%         end
-% 
-%         %% Sensor fault estimation
-%         % Sensor fault 1
-%         if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k)
-%             UIOO(1).Fsen(k) = UIOO(2).res(1, k);
-%         else
-%             UIOO(1).Fsen(k) = zeros(size(UIOO(2).res(1, k)));
-%         end
-% 
-%         % Sensor fault 2
-%         if RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k)
-%             UIOO(2).Fsen(k) = UIOO(1).res(2, k);
-%         else
-%             UIOO(2).Fsen(k) = zeros(size(UIOO(1).res(2, k)));
-%         end
+        %% Sensor fault estimation
+        % Sensor fault 1
+        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k)
+            UIOO(1).Fsen(k) = UIOO(2).res(1, k);
+        else
+            UIOO(1).Fsen(k) = zeros(size(UIOO(2).res(1, k)));
+        end
+
+        % Sensor fault 2
+        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k)
+            UIOO(2).Fsen(k) = UIOO(1).res(2, k);
+        else
+            UIOO(2).Fsen(k) = zeros(size(UIOO(1).res(2, k)));
+        end
         
         % If FT-MPC is enabled
         if FTC == 1
