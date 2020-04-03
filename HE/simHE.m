@@ -1,25 +1,40 @@
 %% MPC on HE
-clc; clear; yalmip('clear');
-close all;
-
-UIOO = struct;
-RUIO = struct;
+clc; clear; yalmip('clear'); close all;
 
 % When generates flat figures
 set(0, 'DefaultFigureRenderer', 'painters');
 
-%% LTI model
-Ts = 0.05;               % Sample time [min]
-Theta_1s = 498;     % Temperatura de salida de fluido 1 (K) (set-point) (498)
-Theta_2s = 690;     % Temperatura de salida de fluido 2 (K)
+%% Load polytope and observer matrices
+% Type of observer(N° observer). Sub-observer(N° sub-observer). Matrix 
+RUIO = struct;
+UIOO = struct;
+load linObs
 
-run HE;
+% %% LTI model and observers
+% % This section is commented to reduce simulation time (using pre-calculated observer matrices)
+% Ts = 0.05;               % Sample time [min]
+% Theta_1s = 498;     % Temperatura de salida de fluido 1 (K) (set-point) (498)
+% Theta_2s = 690;     % Temperatura de salida de fluido 2 (K)
+% 
+% run HE;
+%
+% %% Reduced-order unknown input observer
+% N = 2;
+% run HE_RUIO;
+% 
+% %% Unknown input output observer
+% run HE_UIOO;
+% 
+% % Save observers' data
+% save linObs.mat
 
 %% Parameters
 Np = 5;                                   % Prediction horizon
 Time = 50;                              % Simulation end time 
 Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
+Fail_Q1 = 5; Fail_Q2 = 0.43;    % Actuator fault magnitude [5%, 5%]
+Fail_S1 = 1.5; Fail_S2 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
 
 x0 = [495; 680; 570];             % Start-point
 f1 = [0; 1]; f2 = [-8; 0];          % Fault magnitude
@@ -60,13 +75,6 @@ for k = 1:Maxiter
 	end
 end
 
-%% Reduced-order unknown input observer
-N = 2;
-run HE_RUIO;
-
-%% Unknown input output observer
-run HE_UIOO;
-
 %% Noise
 sig = 3e-3*([1 1 1])';         % Ouput noise sigma
 
@@ -76,7 +84,7 @@ v = sig*randn(1, Nsim);    % Measurement noise v~N(0, sig)
 %% Error detection threshold
 Tau = 2;                % Convergence period
 mag_1 = 1e-1;     % Value Q1
-mag_2 = 2e-1;     % Value Q2
+mag_2 = 5e-2;     % Value Q2
 mag_3 = 5e-4;     % Value O1
 mag_4 = 2e-3;     % Value O2
 
@@ -96,6 +104,7 @@ run MPC;
 U = zeros(nu, Nsim);                   % Control Input
 Ufail = zeros(nu, Nsim);              % Faulty control Input
 Uff = zeros(nu, Nsim+1);            % Feedforward control Input
+Ufails = zeros(nu, Nsim);             % Fails of control inputs
 X = zeros(nx, Nsim+1);               % States
 Y = zeros(ny, Nsim);                    % Measure outputs
 Yfail = zeros(ny, Nsim);                % Faulty measure outputs
@@ -141,8 +150,26 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
     for k = 1:Nsim
         tk = k*Ts; % Simulation time
         
+        if FTC == 0
+            if k == 1
+                YY = X(:, k);
+                UF = Uff(:, k);
+            else
+                YY = Yfail(:, k-1);%X(:, k);%
+                UF = Uff(:, k);
+            end
+        else
+            if k == 1
+                YY = X(:, k);
+                UF = Uff(:, k);
+            else
+                YY = [Yfail(1, k-1)-UIOO(1).Fsen(k); Yfail(2, k-1)-UIOO(2).Fsen(k); Yfail(3, k-1)];
+                UF = Uff(:, k);
+            end
+        
+        end
         % Run MPC controller
-        [sol, diag] = mpc{X(:, k), xsp, Uff(:, k)};
+        [sol, diag] = mpc{YY, xsp, UF};
         if diag
             msg = ['Infeasible problem at t = ', num2str(k*Ts)];
             disp(msg)
@@ -151,18 +178,31 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         U(:, k) = sol{1}; Obj(:, k) = sol{2};
 
         %% Actuator fault income
-        if k*Ts > 5 && k*Ts < 15
-            Ufail(:, k) = U(:, k) + f1;
-            Umax(:, k) = umax + f1;
-            Umin(:, k) = umin + f1;
-        elseif k*Ts > 20 && k*Ts < 25
-            Ufail(:, k) = U(:, k) + f2;
-            Umax(:, k) = umax + f2;
-            Umin(:, k) = umin + f2;
-        else
-            Ufail(:, k) = U(:, k);
-            Umax(:, k) = umax;
-            Umin(:, k) = umin;
+%         if k*Ts > 5 && k*Ts < 15
+%             Ufail(:, k) = U(:, k) + f1;
+%             Umax(:, k) = umax + f1;
+%             Umin(:, k) = umin + f1;
+%         elseif k*Ts > 20 && k*Ts < 25
+%             Ufail(:, k) = U(:, k) + f2;
+%             Umax(:, k) = umax + f2;
+%             Umin(:, k) = umin + f2;
+%         else
+%             Ufail(:, k) = U(:, k);
+%         end
+
+        Ufail(:, k) = U(:, k);      
+        Ufails(:, k) = [0; 0];
+        Umax(:, k) = umax;
+        Umin(:, k) = umin;
+ 
+        if tk > 5 && tk < 15
+            Ufails(:, k) = [Fail_Q1; 0];
+            Ufail(:, k) = U(:, k) + Ufails(:, k);
+        end
+
+        if tk > 20 && tk < 25
+            Ufails(:, k) = [0; -Fail_Q2+Fail_Q2*(exp(-2*(tk-20)/1))];
+            Ufail(:, k) = U(:, k) + Ufails(:, k);
         end
 
         % Natural system saturation
@@ -198,12 +238,20 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         %TODO: Add output fails
         Yfail(:, k) = Y(:, k);
         
-        if k*Ts > 28 && k*Ts < 38
-            Yfail(:, k) = Y(:, k) + [0; -3.5; 0];
+%         if k*Ts > 28 && k*Ts < 38
+%             Yfail(:, k) = Y(:, k) + [0; -3.5; 0];
+%         end
+% 
+%         if k*Ts >40 && k*Ts < 50
+%             Yfail(:, k) = Y(:, k) + [3; 0; 0];
+%         end
+
+        if tk > 28 && tk < 38
+            Yfail(:, k) = Y(:, k) + [0; Fail_S2-Fail_S2*(exp(-5*(tk-28)/1)); 0];
         end
 
-        if k*Ts >40 && k*Ts < 50
-            Yfail(:, k) = Y(:, k) + [2.5; 0; 0];
+        if tk >40 && tk < 51
+            Yfail(:, k) = Y(:, k) + [Fail_S1-Fail_S1*(exp(-4*(tk-40)/1)); 0; 0];
         end
         
         %% RUIO 1
@@ -335,7 +383,8 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %         plot(t, state(1, :), 'b.', tc, y(1, :), 'y-.', t, xsp(1)*ones(length(t)), 'r--', 'LineWidth', 1.5);
         plot(t, xsp(1)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
         hold on
-        plot(tc, Y_sim(1, :), 'b', 'LineWidth', 1.5);
+%         plot(tc, Y_sim(1, :), 'b', 'LineWidth', 1.5);
+        plot(t, Y(1, :), 'g:', t, Yfail(1, :), 'y-.', tc, Y_sim(1, :), 'b', 'LineWidth', 1.5);
         % plot(t, xmin(1)*ones(length(t)), 'y--')
         % plot(t, xmax(1)*ones(length(t)), 'y--')
         % plot(t, state(1, :), 'b-.', t, x1_hat(1, :), 'g:', t, x2_hat(1, :), 'y:', t, xsp(1)*ones(length(t)), 'r--', 'LineWidth', 1.5);
@@ -344,7 +393,9 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %         plot(t, state(2, :), 'b.', tc, y(2, :), 'y-.', t, xsp(2)*ones(length(t)), 'r--', 'LineWidth', 1.5)
         plot(t, xsp(2)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
         hold on
-        h(2) = plot(tc, Y_sim(2, :), 'b', 'LineWidth', 1.5);
+%         h(2) = plot(tc, Y_sim(2, :), 'b', 'LineWidth', 1.5);
+%         h(2) = plot(t, Y(2, :), 'g:', t, Yfail(2, :), 'y-.', tc, Y_sim(2, :), 'b', 'LineWidth', 1.5);
+        plot(t, Y(2, :), 'g:', t, Yfail(2, :), 'y-.', tc, Y_sim(2, :), 'b', 'LineWidth', 1.5);
         % plot(t, xmin(2)*ones(length(t)), 'y--')
         % plot(t, xmax(2)*ones(length(t)), 'y--')
         % plot(t, state(2, :), 'b-.', t, x1_hat(2, :), 'g:', t, x2_hat(2, :), 'y:', t, xsp(2)*ones(length(t)), 'r--', 'LineWidth', 1.5)
@@ -353,7 +404,8 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %         plot(t, state(3, :), 'b.', tc, y(3, :), 'y-.', t, xsp(3)*ones(length(t)), 'r--', 'LineWidth', 1.5)
         plot(t, xsp(3)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
         hold on
-        plot(tc, Y_sim(3, :), 'b', 'LineWidth', 1.5);   
+%         plot(tc, Y_sim(3, :), 'b', 'LineWidth', 1.5);   
+        plot(t, Y(3, :), 'g:', t, Yfail(3, :), 'y-.', tc, Y_sim(3, :), 'b', 'LineWidth', 1.5);
         % plot(t, xmin(3)*ones(length(t)), 'y--')
         % plot(t, xmax(3)*ones(length(t)), 'y--')
         % plot(t, state(3, :), 'b-.', t, x1_hat(3, :), 'g:', t, x2_hat(3, :), 'y:', t, xsp(3)*ones(length(t)), 'r--', 'LineWidth', 1.5)
@@ -362,51 +414,55 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         subplot(311)
 %         plot(t, state(1, :), 'k.', tc, y(1, :), 'g-.', 'LineWidth', 1.5);
         plot(tc, Y_sim(1, :), 'k-.', 'LineWidth', 1.5);
+%         plot(t, Y(1, :), 'g:', t, Yfail(1, :), 'y-.', tc, Y_sim(1, :), 'b', 'LineWidth', 1.5);
         hold off
         legend('x_s', 'Location', 'SouthEast');
         legend boxoff
         subplot(312)
 %         plot(t, state(2, :), 'k.', tc, y(2, :), 'g-.', 'LineWidth', 1.5);
         plot(tc, Y_sim(2, :), 'k-.', 'LineWidth', 1.5);        
+%         plot(t, Y(2, :), 'g:', t, Yfail(2, :), 'y-.', tc, Y_sim(2, :), 'b', 'LineWidth', 1.5);
         hold off
-        legend(h(2), 'MPC', 'Location', 'SouthEast');
+%         legend(h(2), 'MPC', 'Location', 'SouthEast');
         legend boxoff
         subplot(313)
 %         plot(t, state(3, :), 'k.', tc, y(3, :), 'g-.', 'LineWidth', 1.5);
         h(3) = plot(tc, Y_sim(3, :), 'k-.', 'LineWidth', 1.5);
+%         h(3) = plot(t, Y(3, :), 'g:', t, Yfail(3, :), 'y-.', tc, Y_sim(3, :), 'b', 'LineWidth', 1.5);
+%         plot(t, Y(3, :), 'g:', t, Yfail(3, :), 'y-.', tc, Y_sim(3, :), 'b', 'LineWidth', 1.5);
         hold off
         legend(h(3), 'FTMPC', 'Location', 'NorthEast');
         legend boxoff
         print -dsvg figs/outputHE.svg
     end
 
-% 	%% Manipulated variables
-%     figure(2)
-%     if FTC == 0
-%         subplot(211)
-%         stairs(t, U(1, 1:end-1), 'b', 'LineWidth', 1.5)
-%         hold on
-%         xlabel('Time [min]'); ylabel('q_1 [l/min]'); grid on
-%         subplot(212)
-%         stairs(t, U(2, 1:end-1), 'b', 'LineWidth', 1.5)
-%         hold on
-%         xlabel('Time [min]'); ylabel('q_2 [l/min]'); grid on
-% 	else
-%         subplot(211)
-%         stairs(t, U(1, 1:end-1), 'k-.', 'LineWidth', 1.5)
-%         plot(t, umin(1)*ones(length(t)), 'r--')
-%         plot(t, umax(1)*ones(length(t)), 'r--')
-%         hold off
-%         legend('MPC', 'FTMPC', 'Location', 'NorthWest');
-%         legend boxoff
-%         subplot(212)
-%         stairs(t, U(2, 1:end-1), 'k-.', 'LineWidth', 1.5)
-%         plot(t, umin(2)*ones(length(t)), 'r--')
-%         plot(t, umax(2)*ones(length(t)), 'r--')
-%         hold off
-%         print -dsvg figs/inputHE.svg
-%     end
-% 
+	%% Manipulated variables
+    figure(2)
+    if FTC == 0
+        subplot(211)
+        stairs(t, U(1, 1:end), 'b', 'LineWidth', 1.5)
+        hold on
+        xlabel('Time [min]'); ylabel('q_1 [l/min]'); grid on
+        subplot(212)
+        stairs(t, U(2, 1:end), 'b', 'LineWidth', 1.5)
+        hold on
+        xlabel('Time [min]'); ylabel('q_2 [l/min]'); grid on
+	else
+        subplot(211)
+        stairs(t, U(1, 1:end), 'k-.', 'LineWidth', 1.5)
+        plot(t, umin(1)*ones(length(t)), 'r--')
+        plot(t, umax(1)*ones(length(t)), 'r--')
+        hold off
+        legend('MPC', 'FTMPC', 'Location', 'NorthWest');
+        legend boxoff
+        subplot(212)
+        stairs(t, U(2, 1:end), 'k-.', 'LineWidth', 1.5)
+        plot(t, umin(2)*ones(length(t)), 'r--')
+        plot(t, umax(2)*ones(length(t)), 'r--')
+        hold off
+        print -dsvg figs/inputHE.svg
+    end
+
 %     % Failure inputs
 %     figure(3)
 %     if FTC == 0
@@ -439,14 +495,14 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         plot(t, RUIO(1).error, 'b', 'LineWidth', 1.5)
         hold on; grid on
         plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
-        xlabel('Time [min]'); ylabel('|e_x|');
+        xlabel('Time [min]'); ylabel('|e_q|');
         axis([0 inf 0 6.5])
         subplot(212)
         plot(t, RUIO(2).error, 'b', 'LineWidth', 1.5)
         hold on; grid on
         plot(t, threshold(2, :),  'r--', 'LineWidth', 1.5)
         axis([0 inf 0 0.6])
-        xlabel('Time [min]'); ylabel('|e_x|');
+        xlabel('Time [min]'); ylabel('|e_q|');
 	else
         subplot(211)
         plot(t, RUIO(1).error, 'k-.', 'LineWidth', 1.5)
@@ -486,31 +542,54 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
         print -dsvg figs/UIOOerrorHE.svg
     end
 
-%     % Fault estimation
-%     figure(6)
-%     if FTC == 0
-%         subplot(211)
-%         stairs(t, RUIO(1).Fact, 'b', 'LineWidth', 1.5)
-%         hold on
-%         stairs(t, Ufail(1, :) - U(1, 1:end-1), 'm--', 'LineWidth', 1.5)
-%         xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
-%         subplot(212)
-%         stairs(t, RUIO(2).Fact, 'b', 'LineWidth', 1.5)
-%         hold on
-%         stairs(t, Ufail(2, :) - U(2, 1:end-1), 'm--', 'LineWidth', 1.5)
-%         xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
-%     else
-%         subplot(211)
-%         stairs(t, RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
-%         hold off
-%         subplot(212)
-%         stairs(t, RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
-%         hold off
-%         print -dsvg figs/estimationHE.svg
-%     end
-% 
+    % Fault estimation
+    figure(6)
+    if FTC == 0
+        subplot(211)
+        stairs(t, RUIO(1).Fact, 'b', 'LineWidth', 1.5)
+        hold on
+        stairs(t, Ufail(1, :) - U(1, :), 'm--', 'LineWidth', 1.5)
+        xlabel('Time [min]'); ylabel('Q_1 [l/min]'); grid on
+        subplot(212)
+        stairs(t, RUIO(2).Fact, 'b', 'LineWidth', 1.5)
+        hold on
+        stairs(t, Ufail(2, :) - U(2, :), 'm--', 'LineWidth', 1.5)
+        xlabel('Time [min]'); ylabel('Q_2 [l/min]'); grid on
+    else
+        subplot(211)
+        stairs(t, RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
+        hold off
+        subplot(212)
+        stairs(t, RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
+        hold off
+        print -dsvg figs/actuatorEstimationHE.svg
+    end
+
+    % Fault estimation
+    figure(7)
+    if FTC == 0
+        subplot(211)
+        stairs(t, UIOO(1).Fsen, 'b', 'LineWidth', 1.5)
+        hold on
+        stairs(t, Yfail(1, :) - Y(1, :), 'm--', 'LineWidth', 1.5)
+        xlabel('Time [min]'); ylabel('\theta_1 [K]'); grid on
+        subplot(212)
+        stairs(t, UIOO(2).Fsen, 'b', 'LineWidth', 1.5)
+        hold on
+        stairs(t, Yfail(2, :) - Y(2, :), 'm--', 'LineWidth', 1.5)
+        xlabel('Time [min]'); ylabel('\theta_2 [K]'); grid on
+    else
+        subplot(211)
+        stairs(t, UIOO(1).Fsen, 'k-.', 'LineWidth', 1.5)
+        hold off
+        subplot(212)
+        stairs(t, UIOO(2).Fsen, 'k-.', 'LineWidth', 1.5)
+        hold off
+        print -dsvg figs/sensorEstimationHE.svg
+    end
+    
 %     % Objective
-%     figure(7)
+%     figure(8)
 %     if FTC == 0
 %         plot(t, Obj, 'b', 'LineWidth', 1.5)
 %         hold on
@@ -523,7 +602,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %     end
 %     
 %     % State evolution
-%     figure(8)
+%     figure(9)
 %     if FTC == 0
 %         plot3(x0(1), x0(2), x0(3), 'g*', 'LineWidth', 1.5);
 %         hold on
@@ -546,7 +625,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %     Xx = Xpoly.projection(1:2).minHRep();
 %     Xxs = Xs.projection(1:2).minHRep();
 % 
-%     figure(9)
+%     figure(10)
 %     if FTC == 0
 %         plot(x0(1), x0(2), 'g*', 'LineWidth', 1.5);
 %         hold on
@@ -569,7 +648,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %     Xx = Xpoly.projection(1:2:3).minHRep();
 %     Xxs = Xs.projection(1:2:3).minHRep();
 % 
-%     figure(10)
+%     figure(11)
 %     if FTC == 0
 %         plot(x0(1), x0(3), 'gd', 'LineWidth', 1.5);
 %         hold on
@@ -592,7 +671,7 @@ for FTC = 0:1 % 0 - FTC is off; 1 - FTC is on
 %     Xx = Xpoly.projection(2:3).minHRep();
 %     Xxs = Xs.projection(2:3).minHRep();
 % 
-%     figure(11)
+%     figure(12)
 %     if FTC == 0
 %         plot(x0(2), x0(3), 'g*', 'LineWidth', 1.5);
 %         hold on
