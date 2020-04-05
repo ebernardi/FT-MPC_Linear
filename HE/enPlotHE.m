@@ -10,32 +10,37 @@ FTC_OFF = 1; FTC_ON = 2;
 %% Outputs
 figure(1)
 
-subplot(311)
+subplot(211)
 plot(t, xsp(1)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(1, :), 'b', t, FTCS(FTC_OFF).Yfail(1, :), 'y-.', 'LineWidth', 1.5);
 plot(t, FTCS(FTC_ON).Y(1, :), 'k-.', t, FTCS(FTC_ON).Yfail(1, :), 'g:', 'LineWidth', 1.5);
 axis([0 inf 497 500]); hold off
 xlabel('Time [min]'); ylabel('\theta_1 [K]');
+leg = legend('x_s', 'Actual-MPC', 'Measured-MPC', 'Location', 'NorthWest');
+set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
+leg.ItemTokenSize = [20, 15];
 
-subplot(312)
+subplot(212)
 plot(t, xsp(2)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(2, :), 'b', t, FTCS(FTC_OFF).Yfail(2, :), 'y-.', 'LineWidth', 1.5);
-plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
+h(1) = plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', 'LineWidth', 1.5);
+h(2) = plot(t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
 axis([0 inf 688 692]); hold off
 xlabel('Time [min]'); ylabel('\theta_2 [K]');
+leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'NorthEast');
+set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
+leg.ItemTokenSize = [20, 15];
 
-subplot(313)
-plot(t, xsp(3)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
-hold on; grid on
-plot(t, FTCS(FTC_OFF).Y(3, :), 'b', t, FTCS(FTC_OFF).Yfail(3, :), 'y-.', 'LineWidth', 1.5);
-plot(t, FTCS(FTC_ON).Y(3, :), 'k-.', t, FTCS(FTC_ON).Yfail(3, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 557.4 558.4]);
-hold off
-xlabel('Time [min]'); ylabel('\theta_p [K]');
-legend('x_s', 'Actual-MPC', 'Measured-MPC', 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'NorthEast');
-legend boxoff
+% subplot(313)
+% plot(t, xsp(3)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
+% hold on; grid on
+% plot(t, FTCS(FTC_OFF).Y(3, :), 'b', t, FTCS(FTC_OFF).Yfail(3, :), 'y-.', 'LineWidth', 1.5);
+% plot(t, FTCS(FTC_ON).Y(3, :), 'k-.', t, FTCS(FTC_ON).Yfail(3, :), 'g:', 'LineWidth', 1.5);
+% axis([0 inf 557.4 558.4]);
+% hold off
+% xlabel('Time [min]'); ylabel('\theta_p [K]');
 
 print -dsvg figs/outputHE.svg
 
