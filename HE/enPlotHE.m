@@ -6,6 +6,7 @@ load FTCS
 vecrojo = [0.7; 0; 0]; vecverde = [0; 0.8; 0]; vecazul = [0; 0; 0.6]; negro = [.1; .1; .1]; gris = [.5; .7; .5];
 tc = 0:Ts/10:Nsim/20;
 
+disp('Plotting...')
 FTC_OFF = 1; FTC_ON = 2;
 %% Outputs
 figure(1)
@@ -76,7 +77,7 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).RUIO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 6.5])
+axis([0 inf 0 2.5])
 xlabel('Time [min]'); ylabel('|e_q|');
 legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
 legend boxoff
@@ -97,21 +98,21 @@ figure(5)
 subplot(211)
 plot(t, FTCS(FTC_OFF).UIOO(1).error, 'b', 'LineWidth', 1.5)
 hold on; grid on
-plot(t, FTCS(FTC_OFF).UIOO(1).error, 'k-.', 'LineWidth', 1.5)
+plot(t, FTCS(FTC_ON).UIOO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(3, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 0.04])
+axis([0 inf 0 0.02])
 xlabel('Time [min]'); ylabel('|e_x|');
 legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
 legend boxoff
 
 subplot(212)
-plot(t, FTCS(FTC_ON).UIOO(2).error, 'b', 'LineWidth', 1.5)
+plot(t, FTCS(FTC_OFF).UIOO(2).error, 'b', 'LineWidth', 1.5)
 hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(2).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(4, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 0.03])
+axis([0 inf 0 1.5e-2])
 xlabel('Time [min]'); ylabel('|e_x|');
 
 print -dsvg figs/UIOOerrorHE.svg
@@ -121,7 +122,7 @@ figure(6)
 subplot(211)
 stairs(t, FTCS(FTC_OFF).RUIO(1).Fact, 'b', 'LineWidth', 1.5)
 hold on; grid on
-stairs(t, FTCS(FTC_OFF).Ufail(1, :) - FTCS(FTC_OFF).U(1, :), 'm--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_ON).Ufail(1, :) - FTCS(FTC_ON).U(1, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('Q_1 [l/min]');
@@ -129,7 +130,7 @@ xlabel('Time [min]'); ylabel('Q_1 [l/min]');
 subplot(212)
 stairs(t, FTCS(FTC_OFF).RUIO(2).Fact, 'b', 'LineWidth', 1.5)
 hold on; grid on
-stairs(t, FTCS(FTC_OFF).Ufail(2, :) - FTCS(FTC_OFF).U(2, :), 'm--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_ON).Ufail(2, :) - FTCS(FTC_ON).U(2, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('Q_2 [l/min]');
@@ -141,7 +142,7 @@ figure(7)
 subplot(211)
 stairs(t, FTCS(FTC_OFF).UIOO(1).Fsen, 'b', 'LineWidth', 1.5)
 hold on; grid on
-stairs(t, FTCS(FTC_OFF).Yfail(1, :) - FTCS(FTC_OFF).Y(1, :), 'm--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_ON).Yfail(1, :) - FTCS(FTC_ON).Y(1, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).UIOO(1).Fsen, 'k-.', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('\theta_1 [K]');
@@ -149,7 +150,7 @@ xlabel('Time [min]'); ylabel('\theta_1 [K]');
 subplot(212)
 stairs(t, FTCS(FTC_OFF).UIOO(2).Fsen, 'b', 'LineWidth', 1.5)
 hold on; grid on
-stairs(t, FTCS(FTC_OFF).Yfail(2, :) - FTCS(FTC_OFF).Y(2, :), 'm--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_ON).Yfail(2, :) - FTCS(FTC_ON).Y(2, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).UIOO(2).Fsen, 'k-.', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('\theta_2 [K]');

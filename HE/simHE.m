@@ -10,14 +10,14 @@ RUIO = struct;
 UIOO = struct;
 load linObs
 
-% %% LTI model and observers
-% % This section is commented to reduce simulation time (using pre-calculated observer matrices)
+%% LTI model and observers
+% This section is commented to reduce simulation time (using pre-calculated observer matrices)
 % Ts = 0.05;               % Sample time [min]
 % Theta_1s = 498;     % Temperatura de salida de fluido 1 (K) (set-point) (498)
 % Theta_2s = 690;     % Temperatura de salida de fluido 2 (K)
 % 
 % run HE;
-%
+% 
 % %% Reduced-order unknown input observer
 % N = 2;
 % run HE_RUIO;
@@ -35,6 +35,7 @@ t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = 5; Fail_Q2 = 0.43;    % Actuator fault magnitude [5%, 5%]
 Fail_S1 = 1.5; Fail_S2 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
+% Fail_S1 = 2; Fail_S2 = -2.5;	% Sensor fault magnitude [0.5% 0.5%]
 x0 = [495; 680; 570];             % Start-point
 xsp = [Theta_1s; Theta_2s; Theta_p];% Set-point
 
@@ -86,10 +87,10 @@ end
 
 %% Error detection threshold
 Tau = 2;               % Convergence period
-mag_1 = 1e-1;     % Value Q1
+mag_1 = 0.7e-1;     % Value Q1
 mag_2 = 5e-2;     % Value Q2
 mag_3 = 5e-4;     % Value O1
-mag_4 = 2e-3;     % Value O2
+mag_4 = 5e-4;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -103,70 +104,75 @@ end
 %% Simulation Setup
 % Fault Tolerant Control System (1 = disable; 2 = enable).Matrix 
 FTCS = struct;
-for j = 1:2
-    FTCS(j).U = zeros(nu, Nsim);                   % Control Input
-    FTCS(j).Ufail = zeros(nu, Nsim);              % Faulty control Input
-    FTCS(j).Uff = zeros(nu, Nsim+1);            % Feedforward control Input
-    FTCS(j).Ufails = zeros(nu, Nsim);             % Fails of control inputs
-    FTCS(j).X = zeros(nx, Nsim+1);               % States
-    FTCS(j).Y = zeros(ny, Nsim);                    % Measure outputs
-    FTCS(j).Yfail = zeros(ny, Nsim);                % Faulty measure outputs
-    FTCS(j).Obj = zeros(1, Nsim);                   % Objective cost
-end
 
-% RUIOs
-for j = 1:N
-    RUIO(j).Phi = zeros(N, Nsim+1);     % Observer states
-    RUIO(j).X = zeros(nx, Nsim);           % Estimated states
-    RUIO(j).error = zeros(1, Nsim);       % Error
-    RUIO(j).Fact = zeros(1, Nsim);        % Estimated control Input
-    RUIO(j).FQ = zeros(1, Nsim);           % Fault detect Q
-    RUIO(j).delay = 0;                            % Detection delay
-end
-
-% UIOOs
-for j = 1:N
-    UIOO(j).Z = zeros(nx, Nsim+1);      % Observer states
-    UIOO(j).Ymon = zeros(N, Nsim);     % Monitorated outputs
-    UIOO(j).X = zeros(nx, Nsim);           % Estimated states
-    UIOO(j).Y = zeros(nx, Nsim);           % Estimated outputs
-    UIOO(j).res = zeros(nx, Nsim);        % Residue
-    UIOO(j).error = zeros(1, Nsim);       % Error
-    UIOO(j).Fsen = zeros(1, Nsim);       % Estimated sensor fault
-    UIOO(j).FO = zeros(1, Nsim);          % Fault detect S
-end
-
-% Initial states and inputs
-for j = 1:2
-    FTCS(j).X(:, 1) = x0;
-    FTCS(j).Y(:, 1) = C*x0;
-    FTCS(j).U(:, 1) = U_lin;
-    RUIO(j).X(:, 1) = x0;
-    UIOO(j).X(:, 1) = x0;
-end
-              
 %% Simulation
+disp('Simulating...')
 FTC_OFF = 1; FTC_ON = 2;
 for FT = 1:2    % 1 - FT is off; 2 -  FT is on
+    % RUIOs
+    for j = 1:N
+        RUIO(j).Phi = zeros(N, Nsim+1);     % Observer states
+        RUIO(j).X = zeros(nx, Nsim);           % Estimated states
+        RUIO(j).error = zeros(1, Nsim);       % Error
+        RUIO(j).Fact = zeros(1, Nsim);        % Estimated control Input
+        RUIO(j).FQ = zeros(1, Nsim);           % Fault detect Q
+        RUIO(j).delay = 0;                            % Detection delay
+    end
+
+    % UIOOs
+    for j = 1:N
+        UIOO(j).Z = zeros(nx, Nsim+1);      % Observer states
+        UIOO(j).Ymon = zeros(N, Nsim);     % Monitorated outputs
+        UIOO(j).X = zeros(nx, Nsim);           % Estimated states
+        UIOO(j).Y = zeros(nx, Nsim);           % Estimated outputs
+        UIOO(j).res = zeros(nx, Nsim);        % Residue
+        UIOO(j).error = zeros(1, Nsim);       % Error
+        UIOO(j).Fsen = zeros(1, Nsim);       % Estimated sensor fault
+        UIOO(j).FO = zeros(1, Nsim);          % Fault detect S
+    end
     
+    % FTCS matrices
+    FTCS(FT).U = zeros(nu, Nsim);                   % Control Input
+    FTCS(FT).Ufail = zeros(nu, Nsim);              % Faulty control Input
+    FTCS(FT).Uff = zeros(nu, Nsim+1);            % Feedforward control Input
+    FTCS(FT).Ufails = zeros(nu, Nsim);             % Fails of control inputs
+    FTCS(FT).X = zeros(nx, Nsim+1);               % States
+    FTCS(FT).Y = zeros(ny, Nsim);                    % Measure outputs
+    FTCS(FT).Yfail = zeros(ny, Nsim);                % Faulty measure outputs
+    FTCS(FT).Obj = zeros(1, Nsim);                   % Objective cost
+
+    % Initial states and inputs
+    FTCS(FT).X(:, 1) = x0;
+    FTCS(FT).Y(:, 1) = C*x0;
+    FTCS(FT).U(:, 1) = U_lin;
+    RUIO(FT).X(:, 1) = x0;
+    UIOO(FT).X(:, 1) = x0;
+    
+    if FT == FTC_ON
+        disp('Fault tolerant = ON')
+    else
+        disp('Fault tolerant = OFF')
+    end
     % Vector initialization for plots
-    FTCS(FT).Yc_sim = C*x0;
+    FTCS(FT).Yc_sim = C*x0; yMPC = C*FTCS(FT).X(:, 1);
     
     for k = 1:Nsim
         tk = k*Ts; % Simulation time
 
-        if k == 1
-            yMPC = C*FTCS(FT).X(:, k);
-            uffMPC = FTCS(FT).Uff(:, k);
-        else
-            if FT == FTC_ON
-                yMPC = [FTCS(FT).Yfail(1, k-1)-UIOO(1).Fsen(k); FTCS(FT).Yfail(2, k-1)-UIOO(2).Fsen(k); FTCS(FT).Yfail(3, k-1)];
-                uffMPC = FTCS(FT).Uff(:, k);
-            else
-                yMPC = FTCS(FT).Yfail(:, k-1);
-                uffMPC = FTCS(FT).Uff(:, k);
-            end       
-        end
+%             if k == 1
+%                 yMPC = C*FTCS(FT).X(:, k);
+%                 uffMPC = FTCS(FT).Uff(:, k);
+%         else
+%             if FT == FTC_ON
+%                 yMPC = [FTCS(FT).Yfail(1, k-1)-UIOO(1).Fsen(k-1); FTCS(FT).Yfail(2, k-1)-UIOO(2).Fsen(k-1); FTCS(FT).Yfail(3, k-1)];
+%                 uffMPC = FTCS(FT).Uff(:, k);
+%             else
+%                 yMPC = FTCS(FT).Yfail(:, k-1);
+%                 uffMPC = FTCS(FT).Uff(:, k);
+%             end       
+%         end
+
+        uffMPC = FTCS(FT).Uff(:, k);
         
         % Run MPC controller
         [sol, diag] = mpc{yMPC, xsp, uffMPC};
@@ -235,10 +241,12 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         
         if tk > 28 && tk < 38
             FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; Fail_S2-Fail_S2*(exp(-5*(tk-28)/1)); 0];
+%         elseif tk >= 38 && tk < 40
+%             FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; -Fail_S2*(exp(-(tk-28)/1)); 0];
         end
 
-        if tk >40 && tk < 51
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-4*(tk-40)/1)); 0; 0];
+        if tk >41 && tk < 51
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-5*(tk-41)/1)); 0; 0];
         end
         
         %% RUIO 1
@@ -315,24 +323,26 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         
         %% Actuator fault estimation
         if RUIO(1).FQ(k) && ~RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 1
-            if RUIO(2).delay
+            if RUIO(2).delay > 1
                 RUIO(2).Fact(k) = RUIO(2).Fact(k);
             else
-                RUIO(2).delay = 1;
+                RUIO(2).delay = RUIO(2).delay + 1;
                 RUIO(2).Fact(k) = 0;
             end
-        elseif ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
-            if RUIO(1).delay
+        else
+            RUIO(2).delay = 0;
+            RUIO(2).Fact(k) = 0;
+        end
+        if ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 2
+            if RUIO(1).delay > 1
                 RUIO(1).Fact(k) = RUIO(1).Fact(k);
             else
-                RUIO(1).delay = 1;
+                RUIO(1).delay = RUIO(1).delay + 1;
                 RUIO(1).Fact(k) = 0;
             end
         else
             RUIO(1).delay = 0;
-            RUIO(2).delay = 0;
-            RUIO(1).Fact(k) = 0;
-            RUIO(2).Fact(k) = 0;
+            RUIO(1).Fact(k) = 0;       
         end
 
         %% Sensor fault estimation
@@ -344,18 +354,30 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         end
 
         % Sensor fault 2
-        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k)
+        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && ~UIOO(2).FO(k)
             UIOO(2).Fsen(k) = UIOO(1).res(2, k);
         else
             UIOO(2).Fsen(k) = zeros(size(UIOO(1).res(2, k)));
         end
         
+%         % If FT-MPC is enabled
+%         if FT == FTC_ON
+%             FTCS(FT).Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
+%         else
+%             FTCS(FT).Uff(:, k+1) = [0; 0];
+%         end
+        
         % If FT-MPC is enabled
         if FT == FTC_ON
             FTCS(FT).Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
+            yMPC = [FTCS(FT).Yfail(1, k)-UIOO(1).Fsen(k); FTCS(FT).Yfail(2, k)-UIOO(2).Fsen(k); FTCS(FT).Yfail(3, k)];
         else
             FTCS(FT).Uff(:, k+1) = [0; 0];
+            yMPC = FTCS(FT).Yfail(:, k);
         end
+
+        FTCS(FT).Uff(:, k+1) = [0; 0];
+%             yMPC = FTCS(FT).Yfail(:, k);
         
         FTCS(FT).RUIO(1).error(k) = RUIO(1).error(k);
         FTCS(FT).RUIO(1).Fact(k) = RUIO(1).Fact(k);
@@ -370,6 +392,8 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
     end
 end
 
+yalmip('clear')
+disp('Saving...')
 save FTCS.mat
 
 run enPlotHE

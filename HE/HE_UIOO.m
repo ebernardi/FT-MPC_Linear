@@ -24,7 +24,7 @@ for j = 1:N
     const = [const, X >= 0];
 
     if j == 1
-        UIOO(j).F = Bd(:, 2);
+        UIOO(j).F = Bd(:, 1);
     else
         UIOO(j).F = Bd(:, 1);
     end
