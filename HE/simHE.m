@@ -34,8 +34,8 @@ Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = 5; Fail_Q2 = 0.43;    % Actuator fault magnitude [5%, 5%]
-Fail_S1 = 1.5; Fail_S2 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
-% Fail_S1 = 2; Fail_S2 = -2.5;	% Sensor fault magnitude [0.5% 0.5%]
+% Fail_S1 = 1.5; Fail_S2 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
+Fail_S1 = 2; Fail_S2 = -2.5;	% Sensor fault magnitude [0.4% 0.4%]
 x0 = [495; 680; 570];             % Start-point
 xsp = [Theta_1s; Theta_2s; Theta_p];% Set-point
 
@@ -89,7 +89,7 @@ end
 Tau = 2;               % Convergence period
 mag_1 = 0.7e-1;     % Value Q1
 mag_2 = 5e-2;     % Value Q2
-mag_3 = 5e-4;     % Value O1
+mag_3 = 1e-5;     % Value O1
 mag_4 = 5e-4;     % Value O2
 
 threshold = zeros(4, Nsim);
@@ -333,7 +333,7 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
             RUIO(2).delay = 0;
             RUIO(2).Fact(k) = 0;
         end
-        if ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 2
+        if ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
             if RUIO(1).delay > 1
                 RUIO(1).Fact(k) = RUIO(1).Fact(k);
             else
@@ -354,18 +354,11 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         end
 
         % Sensor fault 2
-        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && ~UIOO(2).FO(k)
+        if RUIO(1).FQ(k) && RUIO(2).FQ(k) && ~UIOO(1).FO(k) && UIOO(2).FO(k)
             UIOO(2).Fsen(k) = UIOO(1).res(2, k);
         else
             UIOO(2).Fsen(k) = zeros(size(UIOO(1).res(2, k)));
         end
-        
-%         % If FT-MPC is enabled
-%         if FT == FTC_ON
-%             FTCS(FT).Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
-%         else
-%             FTCS(FT).Uff(:, k+1) = [0; 0];
-%         end
         
         % If FT-MPC is enabled
         if FT == FTC_ON
@@ -375,10 +368,7 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
             FTCS(FT).Uff(:, k+1) = [0; 0];
             yMPC = FTCS(FT).Yfail(:, k);
         end
-
-        FTCS(FT).Uff(:, k+1) = [0; 0];
-%             yMPC = FTCS(FT).Yfail(:, k);
-        
+      
         FTCS(FT).RUIO(1).error(k) = RUIO(1).error(k);
         FTCS(FT).RUIO(1).Fact(k) = RUIO(1).Fact(k);
         FTCS(FT).RUIO(2).error(k) = RUIO(2).error(k);

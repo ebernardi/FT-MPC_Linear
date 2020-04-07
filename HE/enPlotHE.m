@@ -101,7 +101,7 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(3, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 0.02])
+axis([0 inf 0 3e-4])
 xlabel('Time [min]'); ylabel('|e_x|');
 legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
 legend boxoff
@@ -112,7 +112,7 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(2).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(4, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 1.5e-2])
+axis([0 inf 0 6e-3])
 xlabel('Time [min]'); ylabel('|e_x|');
 
 print -dsvg figs/UIOOerrorHE.svg

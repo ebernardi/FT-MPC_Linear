@@ -8,10 +8,10 @@ for j = 1:N
     UIOO(j).H = zeros(size(C));
     if j == 1
         UIOO(j).H(2, :) = C(2, :);
-        UIOO(j).alpha = 0.5;
+        UIOO(j).alpha = 0.1;
     else
         UIOO(j).H(1, :) = C(1, :);
-        UIOO(j).alpha = 0.5;
+        UIOO(j).alpha = 0.8;
     end
     UIOO(j).T2 = null(UIOO(j).H, 'r')';
     UIOO(j).J = UIOO(j).T2*C;
@@ -26,7 +26,7 @@ for j = 1:N
     if j == 1
         UIOO(j).F = Bd(:, 1);
     else
-        UIOO(j).F = Bd(:, 1);
+        UIOO(j).F = Bd(:, 2);
     end
 
     UIOO(j).W = sdpvar(n, p);
