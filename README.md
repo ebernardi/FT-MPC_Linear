@@ -4,7 +4,7 @@
 This code presents the design of a Fault-Tolerant Model Predictive Control (FT-MPC) strategy for LTI systems.
 
 <p align="center">
-	<img src="images/FTMPC.png" width="500">
+	<img src="images/FTMPC.png">
 </p>
 
 Simulation results, based on two typical chemical industrial processes, are given to illustrate the implementation and performance of such approach.
