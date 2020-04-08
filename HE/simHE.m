@@ -29,22 +29,21 @@ load linObs
 % save linObs.mat
 
 %% Simulation parameters
-Time = 50;                              % Simulation end time 
+Time = 60;                              % Simulation end time 
 Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = 5; Fail_Q2 = 0.43;    % Actuator fault magnitude [5%, 5%]
-% Fail_S1 = 1.5; Fail_S2 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
-Fail_S1 = 2; Fail_S2 = -2.5;	% Sensor fault magnitude [0.4% 0.4%]
-x0 = [495; 680; 570];             % Start-point
-xsp = [Theta_1s; Theta_2s; Theta_p];% Set-point
+Fail_S1 = 2; Fail_S2 = -2.5;	 % Sensor fault magnitude [0.5% 0.5%]
+x0 = [495; 680; 570];              % Start-point
+xsp = [Theta_1s; Theta_2s; Theta_p];    % Set-point
 
 %% MPC controller
 % Constraints
 xmin = [495; 650; 530];
 xmax = [500; 750; 590];
-umin = [90; 6];
-umax = [110; 10];
+umin = [90; 7];
+umax = [105; 9];
 
 % Weight matrix
 Qx = eye(nx);
@@ -87,10 +86,10 @@ end
 
 %% Error detection threshold
 Tau = 2;               % Convergence period
-mag_1 = 0.7e-1;     % Value Q1
-mag_2 = 5e-2;     % Value Q2
-mag_3 = 1e-5;     % Value O1
-mag_4 = 5e-4;     % Value O2
+mag_1 = 0.7e-1;  % Value Q1
+mag_2 = 4e-2;     % Value Q2
+mag_3 = 5e-6;     % Value O1
+mag_4 = 4e-4;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -138,44 +137,32 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
     FTCS(FT).Ufails = zeros(nu, Nsim);             % Fails of control inputs
     FTCS(FT).X = zeros(nx, Nsim+1);               % States
     FTCS(FT).Y = zeros(ny, Nsim);                    % Measure outputs
-    FTCS(FT).Yfail = zeros(ny, Nsim);                % Faulty measure outputs
-    FTCS(FT).Obj = zeros(1, Nsim);                   % Objective cost
+    FTCS(FT).Y_hat = zeros(ny, Nsim);             % Estimated outputs
+    FTCS(FT).Yfail = zeros(ny, Nsim);               % Faulty measure outputs
+    FTCS(FT).Obj = zeros(1, Nsim);                  % Objective cost
 
     % Initial states and inputs
     FTCS(FT).X(:, 1) = x0;
     FTCS(FT).Y(:, 1) = C*x0;
+    FTCS(FT).Y_hat(:, 1) = C*x0;
     FTCS(FT).U(:, 1) = U_lin;
     RUIO(FT).X(:, 1) = x0;
     UIOO(FT).X(:, 1) = x0;
+    
+    % Vector initialization for plots
+    FTCS(FT).Yc_sim = C*x0;
     
     if FT == FTC_ON
         disp('Fault tolerant = ON')
     else
         disp('Fault tolerant = OFF')
     end
-    % Vector initialization for plots
-    FTCS(FT).Yc_sim = C*x0; yMPC = C*FTCS(FT).X(:, 1);
     
     for k = 1:Nsim
         tk = k*Ts; % Simulation time
-
-%             if k == 1
-%                 yMPC = C*FTCS(FT).X(:, k);
-%                 uffMPC = FTCS(FT).Uff(:, k);
-%         else
-%             if FT == FTC_ON
-%                 yMPC = [FTCS(FT).Yfail(1, k-1)-UIOO(1).Fsen(k-1); FTCS(FT).Yfail(2, k-1)-UIOO(2).Fsen(k-1); FTCS(FT).Yfail(3, k-1)];
-%                 uffMPC = FTCS(FT).Uff(:, k);
-%             else
-%                 yMPC = FTCS(FT).Yfail(:, k-1);
-%                 uffMPC = FTCS(FT).Uff(:, k);
-%             end       
-%         end
-
-        uffMPC = FTCS(FT).Uff(:, k);
         
         % Run MPC controller
-        [sol, diag] = mpc{yMPC, xsp, uffMPC};
+        [sol, diag] = mpc{FTCS(FT).Y_hat(:, k), xsp, FTCS(FT).Uff(:, k)};
         if diag
             msg = ['Infeasible problem at t = ', num2str(k*Ts)];
             disp(msg)
@@ -200,11 +187,14 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         end
 
         % Q2 fault
-        if tk > 20 && tk < 25
+        if tk > 20 && tk < 30
             FTCS(FT).Ufails(:, k) = [0; -Fail_Q2+Fail_Q2*(exp(-2*(tk-20)/1))];
             FTCS(FT).Ufail(:, k) = FTCS(FT).U(:, k) + FTCS(FT).Ufails(:, k);
 %             FTCS(FT).Umax(:, k) = umax + FTCS(FT).Ufails(:, k);
 %             FTCS(FT).Umin(:, k) = umin + FTCS(FT).Ufails(:, k);
+        elseif tk >= 30 && tk < 32
+            FTCS(FT).Ufails(:, k) = [0; -Fail_Q2*(exp(-8*(tk-30)/1))];
+            FTCS(FT).Ufail(:, k) = FTCS(FT).U(:, k) + FTCS(FT).Ufails(:, k);
         end
 
         % Natural system saturation
@@ -239,14 +229,14 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         %% Sensor fault income
         FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k);
         
-        if tk > 28 && tk < 38
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; Fail_S2-Fail_S2*(exp(-5*(tk-28)/1)); 0];
-%         elseif tk >= 38 && tk < 40
-%             FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; -Fail_S2*(exp(-(tk-28)/1)); 0];
+        if tk > 35 && tk < 45
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; Fail_S2-Fail_S2*(exp(-5*(tk-35)/1)); 0];
+        elseif tk >= 45 && tk < 47
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; +Fail_S2*(exp(-8*(tk-45)/1)); 0];
         end
 
-        if tk >41 && tk < 51
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-5*(tk-41)/1)); 0; 0];
+        if tk > 50 && tk < 61
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-5*(tk-50)/1)); 0; 0];
         end
         
         %% RUIO 1
@@ -363,10 +353,10 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         % If FT-MPC is enabled
         if FT == FTC_ON
             FTCS(FT).Uff(:, k+1) = [RUIO(1).Fact(k); RUIO(2).Fact(k)];
-            yMPC = [FTCS(FT).Yfail(1, k)-UIOO(1).Fsen(k); FTCS(FT).Yfail(2, k)-UIOO(2).Fsen(k); FTCS(FT).Yfail(3, k)];
+            FTCS(FT).Y_hat(:, k+1) = [FTCS(FT).Yfail(1, k)-UIOO(1).Fsen(k); FTCS(FT).Yfail(2, k)-UIOO(2).Fsen(k); FTCS(FT).Yfail(3, k)];
         else
             FTCS(FT).Uff(:, k+1) = [0; 0];
-            yMPC = FTCS(FT).Yfail(:, k);
+            FTCS(FT).Y_hat(:, k+1) = FTCS(FT).Yfail(:, k);
         end
       
         FTCS(FT).RUIO(1).error(k) = RUIO(1).error(k);
