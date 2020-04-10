@@ -1,22 +1,22 @@
 syms qs qc V CA T
 
-%% Parámetros
-E_R = 1e4;          % [°K] (Energia de activación)
-Te = 350;            % [°K] (Temperatura de entrada del reactante)
-Tce = 350;          % [°K] (Temperatura del liquido refrigerante)
-dH = -2e5;          % [cal/mol] (Calor de reacción)
-Cp = 1;               % [cal/g °K] (Calores específicos)
-rho = 1e3;			% [g/l] (Densidad de los líquidos)
-CAe = 1;             % [mol/l] (Concentración de A a la entrada)
-ha = 7e5;			% [cal/min °K] (Coeficiente de transferencia de calor)
-k0 = 7.2e10;            % [l/min] (Constante de velocidad de reacción)
+%% Parameters
+E_R = 1e4;          % [°K] (Activation energy term)
+Te = 350;            % [°K] (Feed temperature)
+Tce = 350;          % [°K] (Inlet coolant temperature)
+dH = -2e5;          % [cal/mol] (Heat of reaction)
+Cp = 1;               % [cal/g °K] (Specific heats)
+rho = 1e3;			% [g/l] (Liquid densities)
+CAe = 1;             % [mol/l] (Feed concentration)
+ha = 7e5;			% [cal/min °K] (Heat transfer term)
+k0 = 7.2e10;            % [l/min] (Reaction rate constant)
 k1 = dH*k0/(rho*Cp);
 k2 = rho*Cp/(rho*Cp);
 k3 = ha/(rho*Cp);
-k4 = 10;                % [l/min m^3/2] (Constante de la válvula)
-q = 100;                % [l/min] (Caudal de Entrada)
+k4 = 10;                % [l/min m^3/2] (Valve term)
+q = 100;                % [l/min] (Feed flow rate)
 
-%% Modelo no lineal
+%% Non-Linear model
 system = [(q - qs);
           ((q/V)*(CAe - CA) - k0*CA*exp(-E_R/T));
 		  ((q/V)*(Te - T) - k1*CA*exp(-E_R/T) + k2*(qc/V)*(1 - exp(-k3/qc))*(Tce - T))];
@@ -26,29 +26,33 @@ outputs = [V CA T];
 states = [V CA T];
 
 nu = length(inputs); nx = length(states); ny = length(outputs);
-C = eye(ny, nx);        % Matriz de salida
-D = zeros(ny, nu);     % Matriz entrada/salida
+C = eye(ny, nx);       % Output matrix
+D = zeros(ny, nu);    % Input/Output matrix
 
-%% Linealización
-% Matrices simbólicas
+%% Linealization
+% Symbolic matrices
 A_sym = jacobian(system, states);
 B_sym = jacobian(system, inputs);
 
-% Obtengo la temperatura dentro del reactor
+% Reactor temperature
 % Tr = -E_R/log(-(q*(Ca-CAe))/(k0*Ca*Vr));
 
-% Obtengo la concentración de salida
+% Output Concentrarion
 Ca = CAe/(1+(k0*(Vr/q)*exp(-E_R/Tr)));
 
-% Obtengo el caudal de salida
+% Linear states
+X_lin = [Vr; Ca; Tr];
+
+% Output flow rate
 Qs = k4*sqrt(Vr);
 
-% Obtengo el caudal refrigerante
-qc0 = 103;              % [l/min] Caudal refrigerante (inicio de iteración fsolve)
-qc_fun = @(qc) (q/Vr)*(Te-Tr) - k1*Ca*exp(-E_R/Tr) + k2*(qc/Vr)*(1-exp(-k3/qc))*(Tce-Tr);
-Qc = fsolve(qc_fun, qc0, optimoptions('fsolve', 'Display', 'off'));
+% Coolant flow rate
+Qc = double(solve((q/Vr)*(Te-Tr) - k1*Ca*exp(-E_R/Tr) + k2*(qc/Vr)*(1-exp(-k3/qc))*(Tce-Tr) == 0));
 
-% Matrices numéricas
+% Inputs
+U_lin = [Qs; Qc];
+
+% Linear systems matrices
 A = subs(A_sym, {V, CA, T, qs, qc}, {Vr, Ca, Tr, Qs, Qc});
 B = subs(B_sym, {V, CA, T, qs, qc}, {Vr, Ca, Tr, Qs, Qc});
 f = subs(system, {V, CA, T, qs, qc}, {Vr, Ca, Tr, Qs, Qc});
@@ -57,6 +61,11 @@ A = double(A);
 B = double(B);
 f = double(f);
 
-X_lin = [Vr; Ca; Tr];
-U_lin = [Qs; Qc];
+% Constant term
 delta = f - (A*X_lin+B*U_lin);
+
+% Continuous-time system
+sys = ss(A, B, C, D);
+
+% Euler discretization method
+Ad = (A*Ts) + eye(nx); Bd = B*Ts; Cd = C; Dd = D; deltad = delta*Ts;

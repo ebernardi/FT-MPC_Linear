@@ -51,18 +51,20 @@ subplot(211)
 stairs(t, FTCS(FTC_OFF).Ufail(1, 1:end), 'b', 'LineWidth', 1.5)
 hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(1, 1:end), 'k-.', 'LineWidth', 1.5)
-stairs(t, FTCS(FTC_OFF).Umin(1, 1:end), 'r--', 'LineWidth', 1.5)
-stairs(t, FTCS(FTC_OFF).Umax(1, 1:end), 'r--', 'LineWidth', 1.5)
+% stairs(t, FTCS(FTC_OFF).Umin(1, 1:end), 'r--', 'LineWidth', 1.5)
+% stairs(t, FTCS(FTC_OFF).Umax(1, 1:end), 'r--', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('q_1 [l/min]');
 legend('MPC', 'FTMPC', 'Location', 'NorthEast');
+axis([0 inf 93 100])
 
 subplot(212)
 stairs(t, FTCS(FTC_OFF).Ufail(2, 1:end), 'b', 'LineWidth', 1.5)
 hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(2, 1:end), 'k-.', 'LineWidth', 1.5)
-stairs(t, FTCS(FTC_OFF).Umin(2, 1:end), 'r--', 'LineWidth', 1.5)
-stairs(t, FTCS(FTC_OFF).Umax(2, 1:end), 'r--', 'LineWidth', 1.5)
+% stairs(t, FTCS(FTC_OFF).Umin(2, 1:end), 'r--', 'LineWidth', 1.5)
+% stairs(t, FTCS(FTC_OFF).Umax(2, 1:end), 'r--', 'LineWidth', 1.5)
+axis([0 inf 7.5 8.5])
 hold off
 xlabel('Time [min]'); ylabel('q_2 [l/min]');
 
