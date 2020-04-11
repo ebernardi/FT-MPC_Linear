@@ -16,7 +16,7 @@ plot(t, xsp(1)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(1, :), 'b', t, FTCS(FTC_OFF).Yfail(1, :), 'y-.', 'LineWidth', 1.5);
 plot(t, FTCS(FTC_ON).Y(1, :), 'k-.', t, FTCS(FTC_ON).Yfail(1, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 95 105]); hold off
+axis([0 inf 98.5 102.5]); hold off
 xlabel('Time [min]'); ylabel('Vol [l]');
 leg = legend('x_s', 'Actual-MPC', 'Measured-MPC', 'Location', 'SouthWest');
 set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
@@ -28,7 +28,7 @@ hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(2, :), 'b', t, FTCS(FTC_OFF).Yfail(2, :), 'y-.', 'LineWidth', 1.5);
 h(1) = plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', 'LineWidth', 1.5);
 h(2) = plot(t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 0.07 0.12]); hold off
+axis([0 inf 0.075 0.115]); hold off
 xlabel('Time [min]'); ylabel('C_A [mol/l]');
 leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'NorthWest');
 set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
@@ -39,7 +39,7 @@ plot(t, xsp(3)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(3, :), 'b', t, FTCS(FTC_OFF).Yfail(3, :), 'y-.', 'LineWidth', 1.5);
 plot(t, FTCS(FTC_ON).Y(3, :), 'k-.', t, FTCS(FTC_ON).Yfail(3, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 438 445]);
+axis([0 inf 436 444]);
 hold off
 xlabel('Time [min]'); ylabel('Temp [K]');
 
@@ -101,7 +101,7 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(3, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 1.5e-4])
+axis([0 inf 0 1.5e-6])
 xlabel('Time [min]'); ylabel('|e_x|');
 % legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthWest');
 
@@ -111,7 +111,7 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(2).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(4, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 15e8])
+axis([0 inf 0 4e-4])
 xlabel('Time [min]'); ylabel('|e_x|');
 
 print -dsvg figs/UIOOerrorCSTR.svg

@@ -23,10 +23,10 @@ load linObs
 % run CSTR_RUIO;
 % 
 % %% Unknown input output observer
-run CSTR_UIOO;
+% run CSTR_UIOO;
 % 
 % % Save observers' data
-save linObs.mat
+% save linObs.mat
 
 %% Simulation parameters
 Time = 60;                              % Simulation end time 
@@ -87,9 +87,9 @@ end
 %% Error detection threshold
 Tau = 2;               % Convergence period
 mag_1 = 4e-2;  % Value Q1
-mag_2 = 3e-4;     % Value Q2
-mag_3 = 5e-6;     % Value O1
-mag_4 = 2e-8;     % Value O2
+mag_2 = 2e-4;     % Value Q2
+mag_3 = 1e-7;     % Value O1
+mag_4 = 2e-6;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -324,7 +324,7 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
             RUIO(2).delay = 0;
             RUIO(2).Fact(k) = 0;
         end
-        if ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && UIOO(2).FO(k) % Actuator fault 2
+        if ~RUIO(1).FQ(k) && RUIO(2).FQ(k) && UIOO(1).FO(k) && ~UIOO(2).FO(k) % Actuator fault 2
             if RUIO(1).delay > 1
                 RUIO(1).Fact(k) = RUIO(1).Fact(k);
             else

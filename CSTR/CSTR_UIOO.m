@@ -8,10 +8,10 @@ for j = 1:N
     UIOO(j).H = zeros(size(C));
     if j == 1
         UIOO(j).H(3, :) = C(3, :);
-        UIOO(j).alpha = 0.3;
+        UIOO(j).alpha = 0.8;
     else
         UIOO(j).H(1, :) = C(1, :);
-        UIOO(j).alpha = 0.8;
+        UIOO(j).alpha =-0.8;
     end
     UIOO(j).T2 = null(UIOO(j).H, 'r')';
     UIOO(j).J = UIOO(j).T2*C;
