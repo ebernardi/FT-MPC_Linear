@@ -34,7 +34,7 @@ Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = -5; Fail_Q2 = 5;      % Actuator fault magnitude [5%, 5%]
-Fail_S1 = 1; Fail_S3 = -3;	% Sensor fault magnitude [0.5% 0.5%]
+Fail_S1 = 1; Fail_S3 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
 x0 = [95; 0.105; 437];            % Start-point
 xsp = [Vr; Ca; Tr];                   % Set-point
 
@@ -96,8 +96,8 @@ threshold = zeros(4, Nsim);
 for k = 1:Nsim
     threshold(1, k) = mag_1 + 1000*exp(-(k-1)/Tau);  % Q1
     threshold(2, k) = mag_2 + 900*exp(-(k-1)/Tau);    % Q2
-    threshold(3, k) = mag_3 + 100*exp(-(k-1)/Tau);    % O1
-    threshold(4, k) = mag_4 + 1000*exp(-(k-1)/Tau);  % O2
+    threshold(3, k) = mag_3 + 0.1*exp(-(k-1)/Tau);    % O1
+    threshold(4, k) = mag_4 + 0.1*exp(-(k-1)/Tau);  % O2
 end
 
 %% Simulation Setup
@@ -231,9 +231,9 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k);
         
         if tk > 35 && tk < 45
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-5*(tk-35)/1))];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-4*(tk-35)/1))];
         elseif tk >= 45 && tk < 47
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-8*(tk-45)/1))];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-6*(tk-45)/1))];
         end
 
         if tk > 50 && tk < 61
