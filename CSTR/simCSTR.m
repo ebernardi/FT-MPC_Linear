@@ -34,13 +34,13 @@ Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = -5; Fail_Q2 = 5;      % Actuator fault magnitude [5%, 5%]
-Fail_S1 = 1; Fail_S3 = -1.5;	% Sensor fault magnitude [0.5% 0.5%]
+Fail_S1 = 2; Fail_S3 = -1.5;      % Sensor fault magnitude [2% 0.5%]
 x0 = [95; 0.105; 437];            % Start-point
 xsp = [Vr; Ca; Tr];                   % Set-point
 
 %% MPC controller
 % Constraints
-xmin = [90; 0.08; 434];
+xmin = [90; 0.07; 434];
 xmax = [105; 0.11; 444];
 umin = [90; 90];
 umax = [110; 110];
@@ -86,10 +86,10 @@ end
 
 %% Error detection threshold
 Tau = 2;               % Convergence period
-mag_1 = 4e-2;  % Value Q1
+mag_1 = 4e-2;     % Value Q1
 mag_2 = 2e-4;     % Value Q2
-mag_3 = 1e-7;     % Value O1
-mag_4 = 2e-6;     % Value O2
+mag_3 = 3e-6;     % Value O1
+mag_4 = 1e-3;     % Value O2
 
 threshold = zeros(4, Nsim);
 
@@ -157,7 +157,6 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
     else
         disp('Fault tolerant = OFF')
     end
-    
 
     for k = 1:Nsim
         tk = k*Ts; % Simulation time
@@ -188,13 +187,13 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         end
 
         % Q2 fault
-        if tk > 20 && tk < 30
-            FTCS(FT).Ufails(:, k) = [0; +Fail_Q2-Fail_Q2*(exp(-2*(tk-20)/1))];
+        if tk > 50 && tk < 60
+            FTCS(FT).Ufails(:, k) = [0; +Fail_Q2-Fail_Q2*(exp(-2*(tk-50)/1))];
             FTCS(FT).Ufail(:, k) = FTCS(FT).U(:, k) + FTCS(FT).Ufails(:, k);
 %             FTCS(FT).Umax(:, k) = umax + FTCS(FT).Ufails(:, k);
 %             FTCS(FT).Umin(:, k) = umin + FTCS(FT).Ufails(:, k);
-        elseif tk >= 30 && tk < 32
-            FTCS(FT).Ufails(:, k) = [0; Fail_Q2*(exp(-8*(tk-30)/1))];
+        elseif tk >= 60 && tk < 62
+            FTCS(FT).Ufails(:, k) = [0; Fail_Q2*(exp(-8*(tk-60)/1))];
             FTCS(FT).Ufail(:, k) = FTCS(FT).U(:, k) + FTCS(FT).Ufails(:, k);
         end
 
@@ -231,13 +230,15 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k);
         
         if tk > 35 && tk < 45
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-4*(tk-35)/1))];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-3*(tk-35)/1))];
         elseif tk >= 45 && tk < 47
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-6*(tk-45)/1))];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-5*(tk-45)/1))];
         end
 
-        if tk > 50 && tk < 61
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-5*(tk-50)/1)); 0; 0];
+        if tk > 20 && tk < 30
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-2*(tk-20)/1)); 0; 0];
+        elseif tk >= 30 && tk < 32
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-4*(tk-30)/1))];
         end
         
         %% RUIO 1
@@ -360,8 +361,8 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
             FTCS(FT).Y_hat(:, k+1) = FTCS(FT).Yfail(:, k);
         end
         
-        FTCS(FT).Uff(:, k+1) = [0; 0];
-        FTCS(FT).Y_hat(:, k+1) = FTCS(FT).Yfail(:, k);
+%         FTCS(FT).Uff(:, k+1) = [0; 0];
+%         FTCS(FT).Y_hat(:, k+1) = FTCS(FT).Yfail(:, k);
       
         FTCS(FT).RUIO(1).error(k) = RUIO(1).error(k);
         FTCS(FT).RUIO(1).Fact(k) = RUIO(1).Fact(k);
