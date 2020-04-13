@@ -236,9 +236,9 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         end
 
         if tk > 20 && tk < 30
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-2*(tk-20)/1)); 0; 0];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-3*(tk-20)/1)); 0; 0];
         elseif tk >= 30 && tk < 32
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-4*(tk-30)/1))];
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1*(exp(-7*(tk-30)/1)); 0; 0];
         end
         
         %% RUIO 1
