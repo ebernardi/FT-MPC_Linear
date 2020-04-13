@@ -86,7 +86,7 @@ end
 
 %% Error detection threshold
 Tau = 2;               % Convergence period
-mag_1 = 4e-2;     % Value Q1
+mag_1 = 2e-2;     % Value Q1
 mag_2 = 2e-4;     % Value Q2
 mag_3 = 3e-6;     % Value O1
 mag_4 = 1e-3;     % Value O2
@@ -94,10 +94,10 @@ mag_4 = 1e-3;     % Value O2
 threshold = zeros(4, Nsim);
 
 for k = 1:Nsim
-    threshold(1, k) = mag_1 + 1000*exp(-(k-1)/Tau);  % Q1
-    threshold(2, k) = mag_2 + 900*exp(-(k-1)/Tau);    % Q2
-    threshold(3, k) = mag_3 + 0.1*exp(-(k-1)/Tau);    % O1
-    threshold(4, k) = mag_4 + 0.1*exp(-(k-1)/Tau);  % O2
+    threshold(1, k) = mag_1 + 500*exp(-(k-1)/Tau);  % Q1
+    threshold(2, k) = mag_2 + 100*exp(-(k-1)/Tau);    % Q2
+    threshold(3, k) = mag_3 + 0.6*exp(-(k-1)/Tau);    % O1
+    threshold(4, k) = mag_4 + 400*exp(-(k-1)/Tau);  % O2
 end
 
 %% Simulation Setup
@@ -229,16 +229,16 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
         %% Sensor fault income
         FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k);
         
-        if tk > 35 && tk < 45
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-3*(tk-35)/1))];
-        elseif tk >= 45 && tk < 47
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-5*(tk-45)/1))];
+        if tk > 20 && tk < 30
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3-Fail_S3*(exp(-3*(tk-20)/1))];
+        elseif tk >= 30 && tk < 32
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [0; 0; Fail_S3*(exp(-5*(tk-30)/1))];
         end
 
-        if tk > 20 && tk < 30
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-3*(tk-20)/1)); 0; 0];
-        elseif tk >= 30 && tk < 32
-            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1*(exp(-7*(tk-30)/1)); 0; 0];
+        if tk > 35 && tk < 45
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1-Fail_S1*(exp(-3*(tk-35)/1)); 0; 0];
+        elseif tk >= 45 && tk < 47
+            FTCS(FT).Yfail(:, k) = FTCS(FT).Y(:, k) + [Fail_S1*(exp(-7*(tk-45)/1)); 0; 0];
         end
         
         %% RUIO 1

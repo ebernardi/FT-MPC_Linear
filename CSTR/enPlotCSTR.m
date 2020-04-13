@@ -11,37 +11,41 @@ FTC_OFF = 1; FTC_ON = 2;
 %% Outputs
 figure(1)
 
-subplot(311)
+subplot(211)
 plot(t, xsp(1)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(1, :), 'b', t, FTCS(FTC_OFF).Yfail(1, :), 'y-.', 'LineWidth', 1.5);
 plot(t, FTCS(FTC_ON).Y(1, :), 'k-.', t, FTCS(FTC_ON).Yfail(1, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 98.5 102.5]); hold off
-xlabel('Time [min]'); ylabel('Vol [l]');
+axis([0 inf 97.5 102.5]); hold off
+xlabel('Time [min]'); ylabel('Volume [l]');
 leg = legend('x_s', 'Actual-MPC', 'Measured-MPC', 'Location', 'SouthWest');
 set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
 leg.ItemTokenSize = [20, 15];
 
-subplot(312)
-plot(t, xsp(2)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
-hold on; grid on
-plot(t, FTCS(FTC_OFF).Y(2, :), 'b', t, FTCS(FTC_OFF).Yfail(2, :), 'y-.', 'LineWidth', 1.5);
-h(1) = plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', 'LineWidth', 1.5);
-h(2) = plot(t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 0.075 0.115]); hold off
-xlabel('Time [min]'); ylabel('C_A [mol/l]');
-leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'NorthWest');
-set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
-leg.ItemTokenSize = [20, 15];
+% subplot(312)
+% plot(t, xsp(2)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
+% hold on; grid on
+% plot(t, FTCS(FTC_OFF).Y(2, :), 'b', t, FTCS(FTC_OFF).Yfail(2, :), 'y-.', 'LineWidth', 1.5);
+% h(1) = plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', 'LineWidth', 1.5);
+% h(2) = plot(t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
+% axis([0 inf 0.075 0.115]); hold off
+% xlabel('Time [min]'); ylabel('C_A [mol/l]');
+% leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'NorthWest');
+% set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
+% leg.ItemTokenSize = [20, 15];
 
-subplot(313)
+subplot(212)
 plot(t, xsp(3)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(3, :), 'b', t, FTCS(FTC_OFF).Yfail(3, :), 'y-.', 'LineWidth', 1.5);
-plot(t, FTCS(FTC_ON).Y(3, :), 'k-.', t, FTCS(FTC_ON).Yfail(3, :), 'g:', 'LineWidth', 1.5);
+h(1) = plot(t, FTCS(FTC_ON).Y(3, :), 'k-.', 'LineWidth', 1.5);
+h(2) = plot(t, FTCS(FTC_ON).Yfail(3, :), 'g:', 'LineWidth', 1.5);
 axis([0 inf 436 444]);
 hold off
-xlabel('Time [min]'); ylabel('Temp [K]');
+xlabel('Time [min]'); ylabel('Temperature [K]');
+leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'SouthWest');
+set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
+leg.ItemTokenSize = [20, 15];
 
 print -dsvg figs/outputCSTR.svg
 
@@ -55,7 +59,6 @@ stairs(t, FTCS(FTC_OFF).Umin(1, 1:end), 'r--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_OFF).Umax(1, 1:end), 'r--', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('q_s [l/min]');
-legend('MPC', 'FTMPC', 'Location', 'NorthEast');
 % axis([0 inf 93 100])
 
 subplot(212)
@@ -67,6 +70,7 @@ stairs(t, FTCS(FTC_OFF).Umax(2, 1:end), 'r--', 'LineWidth', 1.5)
 % axis([0 inf 7.5 8.5])
 hold off
 xlabel('Time [min]'); ylabel('q_c [l/min]');
+legend('MPC', 'FTMPC', 'Location', 'SouthEast');
 
 print -dsvg figs/inputCSTR.svg
 
@@ -78,8 +82,9 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).RUIO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(1, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 0.8])
+axis([0 inf 0 0.7])
 xlabel('Time [min]'); ylabel('|e_q|');
+legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthEast');
 
 subplot(212)
 plot(t, FTCS(FTC_OFF).RUIO(2).error, 'b', 'LineWidth', 1.5)
@@ -87,9 +92,8 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).RUIO(2).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(2, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 0.5])
+axis([0 inf 0 0.3])
 xlabel('Time [min]'); ylabel('|e_q|');
-legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthWest');
 
 print -dsvg figs/RUIOerrorCSTR.svg
 
@@ -101,9 +105,8 @@ hold on; grid on
 plot(t, FTCS(FTC_ON).UIOO(1).error, 'k-.', 'LineWidth', 1.5)
 plot(t, threshold(3, :),  'r--', 'LineWidth', 1.5)
 hold off
-axis([0 inf 0 1.5e-4])
+axis([0 inf 0 1.5e-3])
 xlabel('Time [min]'); ylabel('|e_x|');
-% legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthWest');
 
 subplot(212)
 plot(t, FTCS(FTC_OFF).UIOO(2).error, 'b', 'LineWidth', 1.5)
@@ -113,7 +116,7 @@ plot(t, threshold(4, :),  'r--', 'LineWidth', 1.5)
 hold off
 axis([0 inf 0 2e-1])
 xlabel('Time [min]'); ylabel('|e_x|');
-
+legend('MPC', 'FTMPC', 'Threshold', 'Location', 'NorthWest');
 print -dsvg figs/UIOOerrorCSTR.svg
 
 %% Actuator fault estimation
@@ -124,9 +127,9 @@ hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(1, :) - FTCS(FTC_ON).U(1, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).RUIO(1).Fact, 'k-.', 'LineWidth', 1.5)
 hold off
-% axis([0 inf 0 6])
+axis([0 inf -5.5 0.2])
 xlabel('Time [min]'); ylabel('Q_s [l/min]');
-legend('MPC', 'Actual fault', 'FTMPC', 'Location', 'NorthEast');
+legend('MPC', 'Actual fault', 'FTMPC', 'Location', 'SouthEast');
 
 subplot(212)
 stairs(t, FTCS(FTC_OFF).RUIO(2).Fact, 'b', 'LineWidth', 1.5)
@@ -134,7 +137,7 @@ hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(2, :) - FTCS(FTC_ON).U(2, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).RUIO(2).Fact, 'k-.', 'LineWidth', 1.5)
 hold off
-% axis([0 inf -0.5 0])
+axis([0 inf 0 6])
 xlabel('Time [min]'); ylabel('Q_c [l/min]');
 
 print -dsvg figs/actuatorEstimationCSTR.svg
@@ -149,7 +152,6 @@ stairs(t, FTCS(FTC_ON).UIOO(1).Fsen, 'k-.', 'LineWidth', 1.5)
 hold off
 axis([0 inf 0 2.5]);
 xlabel('Time [min]'); ylabel('V [l]');
-legend('MPC', 'Actual fault', 'FTMPC', 'Location', 'NorthWest');
 
 subplot(212)
 stairs(t, FTCS(FTC_OFF).UIOO(2).Fsen, 'b', 'LineWidth', 1.5)
@@ -157,8 +159,9 @@ hold on; grid on
 stairs(t, FTCS(FTC_ON).Yfail(3, :) - FTCS(FTC_ON).Y(3, :), 'm--', 'LineWidth', 1.5)
 stairs(t, FTCS(FTC_ON).UIOO(2).Fsen, 'k-.', 'LineWidth', 1.5)
 hold off
-axis([0 inf -3 0]);
+axis([0 inf -2 0]);
 xlabel('Time [min]'); ylabel('Temperature [K]');
+legend('MPC', 'Actual fault', 'FTMPC', 'Location', 'SouthEast');
 
 print -dsvg figs/sensorEstimationCSTR.svg
 
