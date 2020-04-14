@@ -16,7 +16,7 @@ plot(t, xsp(1)*ones(1, length(t)), 'r:', 'LineWidth', 1.5);
 hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(1, :), 'b', t, FTCS(FTC_OFF).Yfail(1, :), 'y-.', 'LineWidth', 1.5);
 plot(t, FTCS(FTC_ON).Y(1, :), 'k-.', t, FTCS(FTC_ON).Yfail(1, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 497 501]); hold off
+axis([0 inf 497 500.2]); hold off
 xlabel('Time [min]'); ylabel('\theta_1 [K]');
 leg = legend('x_s', 'Actual-MPC', 'Measured-MPC', 'Location', 'NorthWest');
 set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
@@ -28,7 +28,7 @@ hold on; grid on
 plot(t, FTCS(FTC_OFF).Y(2, :), 'b', t, FTCS(FTC_OFF).Yfail(2, :), 'y-.', 'LineWidth', 1.5);
 h(1) = plot(t, FTCS(FTC_ON).Y(2, :), 'k-.', 'LineWidth', 1.5);
 h(2) = plot(t, FTCS(FTC_ON).Yfail(2, :), 'g:', 'LineWidth', 1.5);
-axis([0 inf 686 691.5]); hold off
+axis([0 inf 687 691.5]); hold off
 xlabel('Time [min]'); ylabel('\theta_2 [K]');
 leg = legend(h(:), 'Actual-FTMPC', 'Measured-FTMPC', 'Location', 'SouthWest');
 set(leg, 'FontSize', 8, 'Orientation', 'horizontal');
@@ -51,20 +51,20 @@ subplot(211)
 stairs(t, FTCS(FTC_OFF).Ufail(1, 1:end), 'b', 'LineWidth', 1.5)
 hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(1, 1:end), 'k-.', 'LineWidth', 1.5)
-% stairs(t, FTCS(FTC_OFF).Umin(1, 1:end), 'r--', 'LineWidth', 1.5)
-% stairs(t, FTCS(FTC_OFF).Umax(1, 1:end), 'r--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_OFF).Umin(1, 1:end), 'r--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_OFF).Umax(1, 1:end), 'r--', 'LineWidth', 1.5)
 hold off
 xlabel('Time [min]'); ylabel('q_1 [l/min]');
 legend('MPC', 'FTMPC', 'Location', 'NorthEast');
-axis([0 inf 93 100])
+% axis([0 inf 93 100])
 
 subplot(212)
 stairs(t, FTCS(FTC_OFF).Ufail(2, 1:end), 'b', 'LineWidth', 1.5)
 hold on; grid on
 stairs(t, FTCS(FTC_ON).Ufail(2, 1:end), 'k-.', 'LineWidth', 1.5)
-% stairs(t, FTCS(FTC_OFF).Umin(2, 1:end), 'r--', 'LineWidth', 1.5)
-% stairs(t, FTCS(FTC_OFF).Umax(2, 1:end), 'r--', 'LineWidth', 1.5)
-axis([0 inf 7.5 8.5])
+stairs(t, FTCS(FTC_OFF).Umin(2, 1:end), 'r--', 'LineWidth', 1.5)
+stairs(t, FTCS(FTC_OFF).Umax(2, 1:end), 'r--', 'LineWidth', 1.5)
+% axis([0 inf 7.5 8.5])
 hold off
 xlabel('Time [min]'); ylabel('q_2 [l/min]');
 

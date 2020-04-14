@@ -34,7 +34,7 @@ Nsim = Time/Ts;                     % Simulation steps
 t = 0:Ts:Time-Ts;                    % Simulation time
 
 Fail_Q1 = -5; Fail_Q2 = 5;      % Actuator fault magnitude [5%, 5%]
-Fail_S1 = 2; Fail_S3 = -1.5;      % Sensor fault magnitude [2% 0.5%]
+Fail_S1 = 2; Fail_S3 = -1.5;    % Sensor fault magnitude [2% 0.5%]
 x0 = [95; 0.105; 437];            % Start-point
 xsp = [Vr; Ca; Tr];                   % Set-point
 
