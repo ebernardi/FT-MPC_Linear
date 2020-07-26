@@ -22,6 +22,4 @@ Simulation results, based on two typical chemical industrial processes, are give
 
 Send comments and questions to:
 
-ebernardi@sanfrancisco.utn.edu.ar
-
-Emanuel Bernardi
+[Emanuel Bernardi](mailto:ebernardi@sanfrancisco.utn.edu.ar)
