@@ -168,7 +168,7 @@ for FT = 1:2    % 1 - FT is off; 2 -  FT is on
             disp(msg)
             return;
         end
-        FTCS(FT).U(:, k) = sol{1}; FTCS(FT).Obj(:, k) = sol{2};
+        FTCS(FT).U(:, k) = sol{1}; FTCS(FT).Obj(k) = sol{2};
 
         %% Actuator fault income
         % No fault
