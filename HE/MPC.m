@@ -1,3 +1,4 @@
+%% LTI MPC
 yalmip('clear')
 
 %% Controller definition
