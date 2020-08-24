@@ -19,6 +19,8 @@ Simulation results, based on two typical chemical industrial processes, are give
 - [SeDuMi](http://sedumi.ie.lehigh.edu/)
 - LMI Lab
 
+## Paper info
+Emanuel Bernardi, Carlos A. Cappelletti and Eduardo J. Adam, "Fault-tolerant Model Predictive Control Strategy Applied to Industrial Processes," *2019 XVIII Workshop on Information Processing and Control (RPIC)*, Bahía Blanca, Argentina, 2019, pp. 31-36, doi:10.1109/RPIC.2019.8882143.
 
 Send comments and questions to:
 
